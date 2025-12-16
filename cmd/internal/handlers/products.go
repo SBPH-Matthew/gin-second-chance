@@ -122,3 +122,52 @@ func ProductPaginate(c *gin.Context) {
 		},
 	})
 }
+
+func DeleteProduct(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		return
+	}
+
+	product := models.Product{
+		ID: uint(idInt),
+	}
+
+	if err := database.DB.Delete(&product).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Product deleted successfully",
+	})
+}
+
+func ProductDetails(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		return
+	}
+
+	var product models.Product
+	if err := database.DB.First(&product, idInt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Product details retrieved successfully",
+		"product": gin.H{
+			"id":          product.ID,
+			"name":        product.Name,
+			"description": product.Description,
+			"price":       product.Price,
+		},
+	})
+}
