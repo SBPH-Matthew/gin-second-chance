@@ -44,6 +44,7 @@ func runMigrate() {
 		&models.Category{},
 		&models.ProductStatus{},
 		&models.Product{},
+		&models.Comment{},
 	)
 
 	if err != nil {
@@ -55,6 +56,7 @@ func runFresh() {
 	log.Println("⚠ Running FRESH migration")
 
 	err := database.DB.Migrator().DropTable(
+		&models.Comment{},
 		&models.Product{},
 		&models.ProductStatus{},
 		&models.Category{},
