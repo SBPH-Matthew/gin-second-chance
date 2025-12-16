@@ -7,7 +7,7 @@ import (
 
 type User struct {
 	gorm.Model
-	ID        uint   `gorm:"primaryKey"`
+	ID        uint   `gorm:"primaryKey,autoIncrement"`
 	FirstName string `gorm:"not null"`
 	LastName  string `gorm:"not null"`
 	Email     string `gorm:"unique; not null"`
