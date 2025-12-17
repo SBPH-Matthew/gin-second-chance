@@ -1,7 +1,64 @@
 {
-    "swagger": "2.0",
-    "info": {
-        "contact": {}
+  "swagger": "2.0",
+  "info": {
+    "contact": {}
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root endpoint",
+        "description": "Returns a simple message",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
     },
-    "paths": {}
+    "/health": {
+      "get": {
+        "summary": "Health endpoint",
+        "description": "Returns a simple message",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "API endpoint",
+        "description": "Returns a simple message",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1": {
+      "get": {
+        "summary": "API v1 endpoint",
+        "description": "Returns a simple message",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
 }

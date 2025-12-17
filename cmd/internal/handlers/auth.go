@@ -9,18 +9,10 @@ import (
 )
 
 func Profile(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "user not authenticated",
-		})
-		return
-	}
-
-	uid := userID.(float64)
+	userID := c.GetUint("user_id")
 
 	var user models.User
-	if err := database.DB.First(&user, uid).Error; err != nil {
+	if err := database.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "user not found",
 		})

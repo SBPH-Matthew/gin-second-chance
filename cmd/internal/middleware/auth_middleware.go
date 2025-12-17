@@ -53,7 +53,14 @@ func AuthRequired() gin.HandlerFunc {
 			}
 		}
 
-		c.Set("user_id", claims["user_id"])
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", uint(userIDFloat))
 		c.Next()
 	}
 }

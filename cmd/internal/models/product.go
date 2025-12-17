@@ -11,11 +11,11 @@ type Product struct {
 	Description string  `gorm:"not null"`
 	Price       float64 `gorm:"not null"`
 
-	CategoryID uint
+	CategoryID *uint
 	StatusID   uint
 	SellerID   uint
 
-	Category Category
+	Category *Category
 	Status   ProductStatus
 	Seller   User
 }
