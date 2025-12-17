@@ -24,4 +24,12 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/me", middleware.AuthRequired(), handlers.Profile)
 	}
 
+	product := api.Group("/product")
+	{
+		product.GET("/", middleware.AuthRequired(), handlers.ProductPaginate)
+		product.POST("/", middleware.AuthRequired(), handlers.CreateProduct)
+		product.PUT("/:id", middleware.AuthRequired(), handlers.UpdateProduct)
+		product.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteProduct)
+	}
+
 }

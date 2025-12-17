@@ -29,6 +29,11 @@ func Profile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Authenticated request",
-		"user":    user,
+		"user": gin.H{
+			"id":         user.ID,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"email":      user.Email,
+		},
 	})
 }

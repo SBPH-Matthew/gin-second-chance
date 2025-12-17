@@ -8,24 +8,15 @@ import (
 )
 
 func SeedCategoryStatus() {
-	statuses := []models.CategoryStatus{
-		{Name: "ACTIVE"},
-		{Name: "INACTIVE"},
-		{Name: "DRAFT"},
-		{Name: "ARCHIVED"},
+
+	statuses := []string{"ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED"}
+
+	for _, name := range statuses {
+		database.DB.FirstOrCreate(
+			&models.CategoryStatus{},
+			models.CategoryStatus{Name: name},
+		)
 	}
 
-	for _, status := range statuses {
-		var existing models.CategoryStatus
-
-		err := database.DB.
-			Where("name = ?", status.Name).
-			First(&existing).
-			Error
-
-		if err != nil {
-			database.DB.Create(&status)
-			log.Println("Seeded category_status:", status.Name)
-		}
-	}
+	log.Println("Seeded category_status:", statuses)
 }

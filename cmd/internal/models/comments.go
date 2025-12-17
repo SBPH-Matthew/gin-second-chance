@@ -8,6 +8,7 @@ type Comment struct {
 	UserID    uint
 	User      User `gorm:"foreignKey:UserID"`
 	ProductID uint
-	Product   Product `gorm:"foreignKey:ProductID"`
 	Content   string
+
+	Product Product
 }
