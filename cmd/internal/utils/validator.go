@@ -1,26 +1,28 @@
 package utils
 
-import "github.com/go-playground/validator/v10"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+)
 
 var Validate = validator.New()
 
-func ValidationErrors(err error) map[string]string {
-	errors := map[string]string{}
-
-	for _, fieldErr := range err.(validator.ValidationErrors) {
-		field := fieldErr.Field()
-
-		switch fieldErr.Tag() {
-		case "required":
-			errors[field] = field + " is required"
-		case "email":
-			errors[field] = "Invalid email format"
-		case "min":
-			errors[field] = field + " must be at least " + fieldErr.Param() + " characters"
-		default:
-			errors[field] = "Invalid field"
-		}
+func ValidateBodyJSON[T any](c *gin.Context, body *T) error {
+	if err := c.ShouldBindJSON(body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return err
 	}
 
-	return errors
+	if err := Validate.Struct(body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return err
+	}
+
+	return nil
 }
