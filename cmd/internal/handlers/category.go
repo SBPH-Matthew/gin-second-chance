@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
@@ -18,11 +19,13 @@ func CreateCategory(c *gin.Context) {
 		return
 	}
 
+	body.Name = strings.ToLower(body.Name)
+
 	category := models.Category{
 		Name: body.Name,
 	}
 
-	if err := database.DB.Preload("Status").Create(&category).Error; err != nil {
+	if err := database.DB.Create(&category).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Database error: " + err.Error(),
 		})
@@ -113,13 +116,22 @@ func UpdateCategory(c *gin.Context) {
 		return
 	}
 
+	body.Name = strings.ToLower(body.Name)
+
 	category := models.Category{
 		ID:       uint(idInt),
 		Name:     body.Name,
 		StatusID: uint(body.Status),
 	}
 
-	if err := database.DB.Preload("Status").Model(&category).Updates(category).Error; err != nil {
+	if err := database.DB.Model(&category).Updates(category).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	if err := database.DB.Preload("Status").First(&category, category.ID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Database error: " + err.Error(),
 		})

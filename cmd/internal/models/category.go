@@ -4,8 +4,8 @@ import "gorm.io/gorm"
 
 type Category struct {
 	gorm.Model
-	ID   uint   `gorm:"primaryKey,autoIncrement"`
-	Name string `gorm:"not null,unique"`
+	ID   uint   `gorm:"primaryKey;autoIncrement"`
+	Name string `gorm:"unique;not null"`
 
 	StatusID uint
 

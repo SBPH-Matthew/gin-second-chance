@@ -6,7 +6,7 @@ import (
 
 type Product struct {
 	gorm.Model
-	ID          uint    `gorm:"primaryKey,autoIncrement"`
+	ID          uint    `gorm:"primaryKey;autoIncrement"`
 	Name        string  `gorm:"not null"`
 	Description string  `gorm:"not null"`
 	Price       float64 `gorm:"not null"`
