@@ -18,7 +18,9 @@ func main() {
 	log.Println("Running seeders...")
 
 	seeders.SeedCategoryStatus()
+	seeders.SeedCategoryGroup()
 	seeders.SeedProductStatus()
+	seeders.SeedProductCondition()
 
 	log.Println("Seeding completed!")
 }

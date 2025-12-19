@@ -11,13 +11,15 @@ type Product struct {
 	Description string  `gorm:"not null"`
 	Price       float64 `gorm:"not null"`
 
-	CategoryID *uint
-	StatusID   uint
-	SellerID   uint
+	CategoryID         *uint
+	StatusID           uint
+	SellerID           uint
+	ProductConditionID uint
 
-	Category *Category
-	Status   ProductStatus
-	Seller   User
+	Category         *Category
+	Status           ProductStatus
+	Seller           User
+	ProductCondition ProductCondition
 }
 
 func (p *Product) BeforeCreate(tx *gorm.DB) error {
@@ -27,6 +29,14 @@ func (p *Product) BeforeCreate(tx *gorm.DB) error {
 			return err
 		}
 		p.StatusID = status.ID
+	}
+
+	if p.ProductConditionID == 0 {
+		var condition ProductCondition
+		if err := tx.Where("name = ?", "New").First(&condition).Error; err != nil {
+			return err
+		}
+		p.ProductConditionID = condition.ID
 	}
 
 	return nil

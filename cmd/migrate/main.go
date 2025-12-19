@@ -40,9 +40,11 @@ func runMigrate() {
 
 	err := database.DB.AutoMigrate(
 		&models.User{},
+		&models.CategoryGroup{},
 		&models.CategoryStatus{},
 		&models.Category{},
 		&models.ProductStatus{},
+		&models.ProductCondition{},
 		&models.Product{},
 		&models.Comment{},
 	)
@@ -59,8 +61,10 @@ func runFresh() {
 		&models.Comment{},
 		&models.Product{},
 		&models.ProductStatus{},
+		&models.ProductCondition{},
 		&models.Category{},
 		&models.CategoryStatus{},
+		&models.CategoryGroup{},
 		&models.User{},
 	)
 	if err != nil {
