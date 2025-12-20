@@ -17,14 +17,22 @@ func CreateCategoryGroup(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Create(&models.CategoryGroup{
+	categoryGroup := models.CategoryGroup{
 		Name: body.Name,
-	}).Error; err != nil {
+	}
+
+	if err := database.DB.Create(&categoryGroup).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Category group created successfully"})
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Category group created successfully",
+		"category_group": gin.H{
+			"id":   categoryGroup.ID,
+			"name": categoryGroup.Name,
+		},
+	})
 }
 
 func GetAllCategoryGroups(c *gin.Context) {
@@ -48,7 +56,10 @@ func GetAllCategoryGroups(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"category_groups": categoryGroupResponses})
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "Category groups retrieved successfully",
+		"category_groups": categoryGroupResponses,
+	})
 }
 
 func UpdateCategoryGroup(c *gin.Context) {
@@ -76,7 +87,11 @@ func UpdateCategoryGroup(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Category group updated successfully", "category_group": categoryGroup})
+	c.JSON(http.StatusOK, gin.H{"message": "Category group updated successfully",
+		"category_group": gin.H{
+			"id":   categoryGroup.ID,
+			"name": categoryGroup.Name,
+		}})
 }
 
 func DeleteCategoryGroup(c *gin.Context) {
