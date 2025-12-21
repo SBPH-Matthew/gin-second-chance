@@ -20,7 +20,7 @@ type User struct {
 func (u *User) BeforeCreate(tx *gorm.DB) error {
 	if u.RoleID == 0 {
 		var role Role
-		if err := tx.FirstOrCreate(&role, Role{Name: "user"}).Error; err != nil {
+		if err := tx.Where("name = ?", "user").First(&role).Error; err != nil {
 			return err
 		}
 		u.RoleID = role.ID
