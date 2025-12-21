@@ -17,6 +17,17 @@ type User struct {
 	Role   Role
 }
 
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.RoleID == 0 {
+		var role Role
+		if err := tx.FirstOrCreate(&role, Role{Name: "user"}).Error; err != nil {
+			return err
+		}
+		u.RoleID = role.ID
+	}
+	return nil
+}
+
 func (u *User) HashPassword(password string) error {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
