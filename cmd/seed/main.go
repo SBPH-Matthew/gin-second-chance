@@ -25,6 +25,7 @@ func main() {
 	seeders.SeedProvinces()
 	seeders.SeedCity()
 	seeders.SeedBarangays()
+	seeders.SeedRoles()
 
 	log.Println("Seeding completed!")
 }
