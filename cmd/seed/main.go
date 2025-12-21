@@ -21,6 +21,10 @@ func main() {
 	seeders.SeedCategoryGroup()
 	seeders.SeedProductStatus()
 	seeders.SeedProductCondition()
+	seeders.SeedRegions()
+	seeders.SeedProvinces()
+	seeders.SeedCity()
+	seeders.SeedBarangays()
 
 	log.Println("Seeding completed!")
 }

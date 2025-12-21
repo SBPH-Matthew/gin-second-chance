@@ -42,4 +42,20 @@ func RegisterRoutes(r *gin.Engine) {
 		category.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategory)
 	}
 
+	productCondition := api.Group("/product-condition")
+	{
+		productCondition.GET("/", middleware.AuthRequired(), handlers.GetAllProductCondition)
+		productCondition.POST("/", middleware.AuthRequired(), handlers.CreateProductCondition)
+		productCondition.PUT("/:id", middleware.AuthRequired(), handlers.UpdateProductCondition)
+		productCondition.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteProductCondition)
+	}
+
+	categoryGroup := api.Group("/category-group")
+	{
+		categoryGroup.GET("/", middleware.AuthRequired(), handlers.GetAllCategoryGroups)
+		categoryGroup.POST("/", middleware.AuthRequired(), handlers.CreateCategoryGroup)
+		categoryGroup.PUT("/:id", middleware.AuthRequired(), handlers.UpdateCategoryGroup)
+		categoryGroup.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategoryGroup)
+	}
+
 }
