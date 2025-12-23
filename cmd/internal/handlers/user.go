@@ -71,13 +71,17 @@ func CreateUser(c *gin.Context) {
 func Register(c *gin.Context) {
 	var body requests.RegisterRequest
 
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		return
 	}
 
-	if err := utils.Validate.Struct(body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 1. Manual Uniqueness Check
+	var existingUser models.User
+	if err := database.DB.Where("email = ?", body.Email).First(&existingUser).Error; err == nil {
+		// If err is nil, it means a user was found
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"errors": gin.H{"email": "This email is already taken"},
+		})
 		return
 	}
 
@@ -118,24 +122,23 @@ func Login(c *gin.Context) {
 	var body requests.LoginRequest
 
 	if err := c.ShouldBindBodyWithJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var user models.User
 	err := database.DB.Where("email = ?", body.Email).First(&user).Error
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"errors": gin.H{"email": "Invalid email or password credentials"}})
 		return
 	}
 
 	if !user.CheckPassword(body.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"errors": gin.H{"email": "Invalid email or password"}})
 	}
 
 	token, err := utils.GenerateToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"errors": gin.H{"email": "Failed to generate token"}})
 		return
 	}
 
