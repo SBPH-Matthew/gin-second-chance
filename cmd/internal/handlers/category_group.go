@@ -13,7 +13,7 @@ import (
 func CreateCategoryGroup(c *gin.Context) {
 	body := requests.CategoryGroupCreateRequest{}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -22,7 +22,7 @@ func CreateCategoryGroup(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&categoryGroup).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
@@ -38,7 +38,7 @@ func CreateCategoryGroup(c *gin.Context) {
 func GetAllCategoryGroups(c *gin.Context) {
 	var categoryGroups []models.CategoryGroup
 	if err := database.DB.Find(&categoryGroups).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
@@ -67,13 +67,13 @@ func UpdateCategoryGroup(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
 		return
 	}
 
 	body := requests.CategoryGroupCreateRequest{}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -83,11 +83,12 @@ func UpdateCategoryGroup(c *gin.Context) {
 	}
 
 	if err := database.DB.Model(&categoryGroup).Updates(categoryGroup).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Category group updated successfully",
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Category group updated successfully",
 		"category_group": gin.H{
 			"id":   categoryGroup.ID,
 			"name": categoryGroup.Name,
@@ -99,7 +100,7 @@ func DeleteCategoryGroup(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
 		return
 	}
 
@@ -108,7 +109,7 @@ func DeleteCategoryGroup(c *gin.Context) {
 	}
 
 	if err := database.DB.Delete(&categoryGroup).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 

@@ -51,6 +51,8 @@ func runMigrate() {
 		&models.Province{},
 		&models.City{},
 		&models.Barangay{},
+		&models.VehicleType{},
+		&models.Vehicle{},
 	)
 
 	if err != nil {
@@ -74,6 +76,9 @@ func runFresh() {
 		&models.Province{},
 		&models.City{},
 		&models.Barangay{},
+		&models.Comment{},
+		&models.VehicleType{},
+		&models.Vehicle{},
 	)
 	if err != nil {
 		log.Fatalf("drop failed: %v", err)

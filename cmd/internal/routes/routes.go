@@ -58,4 +58,12 @@ func RegisterRoutes(r *gin.Engine) {
 		categoryGroup.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategoryGroup)
 	}
 
+	categoryStatus := api.Group("/category-status")
+	{
+		categoryStatus.GET("/", middleware.AuthRequired(), handlers.GetAllCategoryStatuses)
+		categoryStatus.POST("/", middleware.AuthRequired(), handlers.CreateCategoryStatus)
+		categoryStatus.PUT("/:id", middleware.AuthRequired(), handlers.UpdateCategoryStatus)
+		categoryStatus.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategoryStatus)
+	}
+
 }

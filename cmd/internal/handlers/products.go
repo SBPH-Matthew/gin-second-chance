@@ -18,17 +18,17 @@ func CreateProduct(c *gin.Context) {
 
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "User not found"})
 		return
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
 	if err := utils.Validate.Struct(body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -41,7 +41,7 @@ func CreateProduct(c *gin.Context) {
 
 	if err := database.DB.Create(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -69,7 +69,7 @@ func UpdateProduct(c *gin.Context) {
 	id := c.Param("id")
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid product ID"})
 		return
 	}
 
@@ -82,7 +82,7 @@ func UpdateProduct(c *gin.Context) {
 
 	if err := database.DB.Model(&product).Updates(product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -103,19 +103,19 @@ func ProductPaginate(c *gin.Context) {
 	limit := c.Query("limit")
 
 	if page == "" || limit == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing page or limit query parameter"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Missing page or limit query parameter"})
 		return
 	}
 
 	pageInt, err := strconv.Atoi(page)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid page query parameter"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid page query parameter"})
 		return
 	}
 
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit query parameter"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid limit query parameter"})
 		return
 	}
 
@@ -124,7 +124,7 @@ func ProductPaginate(c *gin.Context) {
 	var products []models.Product
 	if err := database.DB.Offset(offset).Limit(limitInt).Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -142,7 +142,7 @@ func DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid product ID"})
 		return
 	}
 
@@ -152,7 +152,7 @@ func DeleteProduct(c *gin.Context) {
 
 	if err := database.DB.Delete(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -166,13 +166,13 @@ func ProductDetails(c *gin.Context) {
 	id := c.Param("id")
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid product ID"})
 		return
 	}
 
 	var product models.Product
 	if err := database.DB.First(&product, idInt).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found"})
 		return
 	}
 
@@ -209,7 +209,7 @@ func GetMyProductsPaginate(c *gin.Context) {
 
 	if err := database.DB.Preload("Status").Where("seller_id = ?", userID).Limit(limit).Offset(offset).Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}

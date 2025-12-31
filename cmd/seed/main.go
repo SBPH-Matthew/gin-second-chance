@@ -26,6 +26,7 @@ func main() {
 	seeders.SeedCity()
 	seeders.SeedBarangays()
 	seeders.SeedRoles()
+	seeders.SeedVehicleType()
 
 	log.Println("Seeding completed!")
 }

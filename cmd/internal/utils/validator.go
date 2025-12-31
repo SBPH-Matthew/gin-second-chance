@@ -22,11 +22,11 @@ func ValidateBodyJSON[T any](c *gin.Context, body *T) error {
 				formattedErrors[f.Field()] = f.Tag()
 			}
 
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": formattedErrors})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid form data", "errors": formattedErrors})
 			return err
 		}
 
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON format"})
 		return err
 	}
 

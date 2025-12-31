@@ -29,7 +29,7 @@ func CreateCategoryStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category status created successfully",
-		"category": gin.H{
+		"category_status": gin.H{
 			"id":   categoryStatus.ID,
 			"name": categoryStatus.Name,
 		},
@@ -39,7 +39,7 @@ func CreateCategoryStatus(c *gin.Context) {
 func GetAllCategoryStatuses(c *gin.Context) {
 	categoryStatuses := []models.CategoryStatus{}
 
-	if err := database.DB.Find(&categoryStatuses).Error; err != nil {
+	if err := database.DB.Where("name != ?", "ARCHIVED").Find(&categoryStatuses).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -59,8 +59,8 @@ func GetAllCategoryStatuses(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "Category statuses retrieved successfully",
-		"categories": categoryStatusesResponse,
+		"message":           "Category statuses retrieved successfully",
+		"category_statuses": categoryStatusesResponse,
 	})
 }
 
@@ -91,7 +91,7 @@ func UpdateCategoryStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category status updated successfully",
-		"category": gin.H{
+		"category_status": gin.H{
 			"id":   categoryStatus.ID,
 			"name": categoryStatus.Name,
 		},

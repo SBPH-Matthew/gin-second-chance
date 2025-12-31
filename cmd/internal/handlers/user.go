@@ -28,14 +28,14 @@ func CreateUser(c *gin.Context) {
 
 	if err := c.ShouldBindBodyWithJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
 
 	if body.Password != body.ConfirmPassword {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Passwords do not match",
+			"message": "Passwords do not match",
 		})
 		return
 	}
@@ -43,7 +43,7 @@ func CreateUser(c *gin.Context) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -57,7 +57,7 @@ func CreateUser(c *gin.Context) {
 
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -80,7 +80,8 @@ func Register(c *gin.Context) {
 	if err := database.DB.Where("email = ?", body.Email).First(&existingUser).Error; err == nil {
 		// If err is nil, it means a user was found
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
-			"errors": gin.H{"email": "This email is already taken"},
+			"message": "This email is already taken",
+			"errors":  gin.H{"email": "This email is already taken"},
 		})
 		return
 	}
@@ -94,7 +95,7 @@ func Register(c *gin.Context) {
 	// 🔒 Hash using model method
 	if err := user.HashPassword(body.Password); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to hash password",
+			"message": "Failed to hash password",
 		})
 		return
 	}
@@ -102,7 +103,7 @@ func Register(c *gin.Context) {
 	// Save to DB
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -122,25 +123,51 @@ func Login(c *gin.Context) {
 	var body requests.LoginRequest
 
 	if err := c.ShouldBindBodyWithJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
 
 	var user models.User
 	err := database.DB.Where("email = ?", body.Email).First(&user).Error
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"errors": gin.H{"email": "Invalid email or password credentials"}})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid email or password credentials",
+			"errors":  gin.H{"email": "Invalid email or password credentials"}})
 		return
 	}
 
 	if !user.CheckPassword(body.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"errors": gin.H{"email": "Invalid email or password"}})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid email or password",
+			"errors":  gin.H{"email": "Invalid email or password"}})
+		return
 	}
 
 	token, err := utils.GenerateToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"errors": gin.H{"email": "Failed to generate token"}})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate token",
+			"errors":  gin.H{"email": "Failed to generate token"}})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// --- SET THE HTTP-ONLY COOKIE ---
+	c.SetCookie(
+		"token",     // Name of the cookie
+		token,       // The JWT string
+		3600*24,     // MaxAge in seconds (e.g., 24 hours)
+		"/",         // Path (available to all routes)
+		"localhost", // Domain (change to your actual domain in production)
+		false,       // Secure: Set to true if using HTTPS (essential for production!)
+		true,        // HttpOnly: TRUE (prevents JavaScript access)
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"user": gin.H{
+			"id":         user.ID,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+		},
+	})
 }

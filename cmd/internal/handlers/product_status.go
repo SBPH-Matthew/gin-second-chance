@@ -17,7 +17,7 @@ func CreateProductStatus(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -25,7 +25,7 @@ func CreateProductStatus(c *gin.Context) {
 		ID:   uint(idInt),
 		Name: body.Name,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
@@ -41,14 +41,14 @@ func UpdateProductStatus(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
 	if err := database.DB.Model(&models.ProductStatus{}).Where("id = ?", idInt).Updates(models.ProductStatus{
 		Name: body.Name,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
@@ -62,12 +62,12 @@ func DeleteProductStatus(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 
 	if err := database.DB.Delete(&models.ProductStatus{}, idInt).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 

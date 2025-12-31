@@ -16,7 +16,7 @@ func CreateProductCondition(c *gin.Context) {
 
 	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -27,7 +27,7 @@ func CreateProductCondition(c *gin.Context) {
 
 	if err := database.DB.Create(&productCondition).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -46,7 +46,7 @@ func GetAllProductCondition(c *gin.Context) {
 
 	if err := database.DB.Find(&productConditions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -76,7 +76,7 @@ func UpdateProductCondition(c *gin.Context) {
 
 	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -85,7 +85,7 @@ func UpdateProductCondition(c *gin.Context) {
 	idInt, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
+			"message": "Invalid ID",
 		})
 		return
 	}
@@ -97,7 +97,7 @@ func UpdateProductCondition(c *gin.Context) {
 
 	if err := database.DB.Model(&productCondition).Updates(productCondition).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
@@ -116,14 +116,14 @@ func DeleteProductCondition(c *gin.Context) {
 	idInt, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
+			"message": "Invalid ID",
 		})
 		return
 	}
 
 	if err := database.DB.Delete(&models.ProductCondition{}, idInt).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database error: " + err.Error(),
+			"message": "Database error: " + err.Error(),
 		})
 		return
 	}

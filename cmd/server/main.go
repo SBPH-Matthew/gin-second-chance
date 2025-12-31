@@ -47,7 +47,11 @@ func main() {
 			"GET", "POST", "PUT", "DELETE", "OPTIONS",
 		},
 		AllowHeaders: []string{
-			"Origin", "Content-Type", "Authorization",
+			"Origin",
+			"Content-Type",
+			"Authorization",
+			"Accept",
+			"Cookie", // Add this
 		},
 		ExposeHeaders: []string{
 			"Content-Length",

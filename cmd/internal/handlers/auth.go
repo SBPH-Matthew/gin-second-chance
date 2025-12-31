@@ -14,7 +14,7 @@ func Profile(c *gin.Context) {
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "user not found",
+			"message": "user not found",
 		})
 		return
 	}
