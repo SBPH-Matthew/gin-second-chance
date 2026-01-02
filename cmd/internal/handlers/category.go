@@ -206,3 +206,39 @@ func DeleteCategory(c *gin.Context) {
 		"message": "Category deleted successfully",
 	})
 }
+
+func SetCategoryStatus(c *gin.Context) {
+	id := c.Param("id")
+
+	type ChangeStatusRequest struct {
+		Status uint `json:"status" validate:"required"`
+	}
+
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
+		return
+	}
+
+	var request = ChangeStatusRequest{}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	category := models.Category{
+		ID:       uint(idInt),
+		StatusID: uint(request.Status),
+	}
+
+	if err := database.DB.Model(&category).Updates(category).Updates(category).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Category status updated successfully",
+	})
+}

@@ -17,11 +17,20 @@ func RegisterRoutes(r *gin.Engine) {
 
 	api := r.Group("/api")
 	{
-		api.GET("/users", handlers.GetUsers)
-		api.POST("/user/create", handlers.CreateUser)
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
 		api.GET("/me", middleware.AuthRequired(), handlers.Profile)
+	}
+
+	user := api.Group("/user")
+	{
+		user.GET("/", middleware.AuthRequired(), handlers.GetPaginateUser)
+		user.POST("/", middleware.AuthRequired(), handlers.CreateUser)
+	}
+
+	roles := api.Group("/role")
+	{
+		roles.GET("/", middleware.AuthRequired(), handlers.GetRoles)
 	}
 
 	product := api.Group("/product")
@@ -39,6 +48,7 @@ func RegisterRoutes(r *gin.Engine) {
 		category.GET("/", middleware.AuthRequired(), handlers.CategoryPaginate)
 		category.POST("/", middleware.AuthRequired(), handlers.CreateCategory)
 		category.PUT("/:id", middleware.AuthRequired(), handlers.UpdateCategory)
+		category.PUT("/:id/status", middleware.AuthRequired(), handlers.SetCategoryStatus)
 		category.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategory)
 	}
 

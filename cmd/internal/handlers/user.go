@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
@@ -17,25 +18,103 @@ func GetUsers(c *gin.Context) {
 	})
 }
 
-func CreateUser(c *gin.Context) {
-	var body struct {
-		FirstName       string `json:"first_name"`
-		LastName        string `json:"last_name"`
-		Email           string `json:"email"`
-		Password        string `json:"password"`
-		ConfirmPassword string `json:"confirm_password"`
+func GetPaginateUser(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
 	}
 
-	if err := c.ShouldBindBodyWithJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	var users []models.User
+	var total int64
+
+	if err := database.DB.Model(&models.User{}).Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+		return
+	}
+
+	if err := database.DB.Preload("Role").Order("id asc").Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+		return
+	}
+
+	type RoleResponse struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+
+	type UserResponse struct {
+		ID        uint         `json:"id"`
+		FirstName string       `json:"first_name"`
+		LastName  string       `json:"last_name"`
+		Email     string       `json:"email"`
+		Role      RoleResponse `json:"role"`
+	}
+
+	userResponse := make([]UserResponse, 0)
+	for _, user := range users {
+		userResponse = append(userResponse, UserResponse{
+			ID:        user.ID,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+			Email:     user.Email,
+			Role: RoleResponse{
+				ID:   user.Role.ID,
+				Name: user.Role.Name,
+			},
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User retrieved successfully",
+		"users": gin.H{
+			"total": total,
+			"items": userResponse,
+		},
+	})
+}
+
+func CreateUser(c *gin.Context) {
+	type CreateUserRequest struct {
+		FirstName       string `json:"first_name" validate:"required"`
+		LastName        string `json:"last_name" validate:"required"`
+		Email           string `json:"email" validate:"required,email"`
+		Role            string `json:"role" validate:"required"`
+		Password        string `json:"password" validate:"required,min=8,max=100"`
+		ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=100,eqfield=Password"`
+	}
+
+	var body CreateUserRequest
+
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
+		return
+	}
+
+	var existingUser models.User
+	result := database.DB.Where("email = ?", body.Email).Find(&existingUser)
+
+	// If RowsAffected is greater than 0, it means the user exists
+	if result.RowsAffected > 0 {
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"message": body.Email,
+			"errors":  gin.H{"email": "This email is already taken"},
 		})
 		return
 	}
 
-	if body.Password != body.ConfirmPassword {
+	roleID, err := strconv.Atoi(body.Role)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Passwords do not match",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -52,6 +131,7 @@ func CreateUser(c *gin.Context) {
 		FirstName: body.FirstName,
 		LastName:  body.LastName,
 		Email:     body.Email,
+		RoleID:    uint(roleID),
 		Password:  string(passwordHash),
 	}
 
@@ -63,7 +143,6 @@ func CreateUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user":    user,
 		"message": "User created successfully",
 	})
 }
@@ -170,4 +249,55 @@ func Login(c *gin.Context) {
 			"last_name":  user.LastName,
 		},
 	})
+}
+
+func UpdateUser(c *gin.Context) {
+	var body requests.UpdateUserDetailRequest
+
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid user id",
+		})
+		return
+	}
+
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, idInt).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"message": "User not found",
+		})
+		return
+	}
+
+	var existingEmail models.User
+	if err := database.DB.Where("email != ?", body.Email).Where("id != ?", idInt).Find(&existingEmail).Error; err == nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Email already exists",
+			"errors":  gin.H{"email": "Email already exists"},
+		})
+		return
+	}
+
+	roleID, err := strconv.Atoi(body.Role)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid role id",
+		})
+		return
+	}
+
+	updateUser := models.User{
+		ID:        uint(idInt),
+		FirstName: body.FirstName,
+		LastName:  body.LastName,
+		Email:     body.Email,
+		RoleID:    uint(roleID),
+	}
+
 }

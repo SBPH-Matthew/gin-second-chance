@@ -52,6 +52,7 @@ func main() {
 			"Authorization",
 			"Accept",
 			"Cookie", // Add this
+			"X-Requested-With",
 		},
 		ExposeHeaders: []string{
 			"Content-Length",
