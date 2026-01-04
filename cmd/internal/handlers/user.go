@@ -275,11 +275,15 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	var existingEmail models.User
-	if err := database.DB.Where("email != ?", body.Email).Where("id != ?", idInt).Find(&existingEmail).Error; err == nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+	var count int64
+	database.DB.Model(&models.User{}).
+		Where("email = ? AND id <> ?", body.Email, idInt).
+		Count(&count)
+
+	if count > 0 {
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{ // 409 Conflict is better than 500
 			"message": "Email already exists",
-			"errors":  gin.H{"email": "Email already exists"},
+			"errors":  gin.H{"email": "This email is already registered to another account"},
 		})
 		return
 	}
@@ -300,4 +304,77 @@ func UpdateUser(c *gin.Context) {
 		RoleID:    uint(roleID),
 	}
 
+	if err := database.DB.Model(&updateUser).Updates(updateUser).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User details updated!",
+	})
+}
+
+func ChangeUserPassword(c *gin.Context) {
+	var body requests.UpdateUserPasswordRequest
+
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
+		return
+	}
+
+	idInt, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid ID",
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, idInt).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"message": "User not found",
+		})
+		return
+	}
+
+	if err := user.CheckPassword(body.OldPassword); err == false {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Old password is invalid",
+			"errors": gin.H{
+				"old_password": "Old password is invalid",
+			},
+		})
+		return
+	}
+
+	if body.NewPassword != body.ConfirmPassword {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Password confirmation does not match",
+			"errors": gin.H{
+				"confirm_password": "Password confirmation does not match",
+			},
+		})
+		return
+	}
+
+	if err := user.HashPassword(body.NewPassword); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if err := database.DB.Model(&user).
+		Update("password", user.Password).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to update password",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password updated successfully",
+	})
 }
