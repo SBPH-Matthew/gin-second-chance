@@ -26,7 +26,7 @@ func CreateCategory(c *gin.Context) {
 	}
 
 	if err := database.DB.Where("name = ?", category.Name).First(&models.Category{}).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
 			"message": "Category name already exists",
 			"errors": gin.H{
 				"name": "Category name already exists",
@@ -153,6 +153,16 @@ func UpdateCategory(c *gin.Context) {
 		Name:            body.Name,
 		StatusID:        uint(body.Status),
 		CategoryGroupID: uint(body.CategoryGroup),
+	}
+
+	if err := database.DB.Where("name = ?", category.Name).First(&models.Category{}).Error; err == nil {
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"message": "Category name already exists",
+			"errors": gin.H{
+				"name": "Category name already exists",
+			},
+		})
+		return
 	}
 
 	if err := database.DB.Model(&category).Updates(category).Error; err != nil {

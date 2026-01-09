@@ -378,3 +378,28 @@ func ChangeUserPassword(c *gin.Context) {
 		"message": "Password updated successfully",
 	})
 }
+
+func DeleteUser(c *gin.Context) {
+	idInt, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "No id is provided",
+		})
+		return
+	}
+
+	user := models.User{
+		ID: uint(idInt),
+	}
+
+	if err := database.DB.Delete(&user).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User deleted successfully",
+	})
+}
