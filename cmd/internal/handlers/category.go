@@ -252,3 +252,34 @@ func SetCategoryStatus(c *gin.Context) {
 		"message": "Category status updated successfully",
 	})
 }
+
+func GetAllCategory(c *gin.Context) {
+	var categories []models.Category
+
+	if err := database.DB.Preload("Status").Preload("CategoryGroup").Find(&categories).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+		return
+	}
+
+	type CategoryResponse struct {
+		ID     uint   `json:"id"`
+		Name   string `json:"name"`
+		Status uint   `json:"status"`
+		Group  uint   `json:"category_group"`
+	}
+
+	categoryResponse := make([]CategoryResponse, 0)
+	for _, cat := range categories {
+		categoryResponse = append(categoryResponse, CategoryResponse{
+			ID:     cat.ID,
+			Name:   cat.Name,
+			Status: cat.StatusID,
+			Group:  cat.CategoryGroupID,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Categories retrieved successfully",
+		"categories": categoryResponse,
+	})
+}

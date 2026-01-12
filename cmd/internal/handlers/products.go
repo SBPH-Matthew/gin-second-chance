@@ -73,14 +73,31 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	product := models.Product{
-		ID:          uint(idInt),
-		Name:        body.Name,
-		Description: body.Description,
-		Price:       body.Price,
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
 	}
 
-	if err := database.DB.Model(&product).Updates(product).Error; err != nil {
+	if err := utils.Validate.Struct(body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	userID := c.GetUint("user_id")
+
+	// Check if product exists and belongs to the user
+	var existingProduct models.Product
+	if err := database.DB.Where("id = ? AND seller_id = ?", idInt, userID).First(&existingProduct).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found or access denied"})
+		return
+	}
+
+	// Update fields
+	existingProduct.Name = body.Name
+	existingProduct.Description = body.Description
+	existingProduct.Price = body.Price
+
+	if err := database.DB.Save(&existingProduct).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
@@ -89,12 +106,6 @@ func UpdateProduct(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product updated successfully",
-		"product": gin.H{
-			"id":          product.ID,
-			"name":        product.Name,
-			"description": product.Description,
-			"price":       product.Price,
-		},
 	})
 }
 
@@ -122,18 +133,55 @@ func ProductPaginate(c *gin.Context) {
 	offset := (pageInt - 1) * limitInt
 
 	var products []models.Product
-	if err := database.DB.Offset(offset).Limit(limitInt).Find(&products).Error; err != nil {
+	var total int64
+
+	query := database.DB.Model(&models.Product{})
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
 
+	// Get paginated items
+	if err := query.Preload("Status").Preload("ProductCondition").Preload("Category").Offset(offset).Limit(limitInt).Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	type ProductResponse struct {
+		ID          uint    `json:"id"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Price       float64 `json:"price"`
+		Status      string  `json:"status"`
+		Condition   string  `json:"condition"`
+		Category    string  `json:"category"`
+	}
+
+	var productResponses []ProductResponse
+
+	for _, product := range products {
+		productResponses = append(productResponses, ProductResponse{
+			ID:          product.ID,
+			Name:        product.Name,
+			Description: product.Description,
+			Price:       product.Price,
+			Status:      product.Status.Name,
+			Condition:   product.ProductCondition.Name,
+			Category:    product.Category.Name,
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Products paginated successfully",
 		"products": gin.H{
-			"total": len(products),
-			"items": products,
+			"total": total,
+			"items": productResponses,
 		},
 	})
 }
@@ -146,14 +194,19 @@ func DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	product := models.Product{
-		ID: uint(idInt),
+	userID := c.GetUint("user_id")
+
+	// Only allow deletion if the user owns the product
+	result := database.DB.Where("id = ? AND seller_id = ?", idInt, userID).Delete(&models.Product{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + result.Error.Error(),
+		})
+		return
 	}
 
-	if err := database.DB.Delete(&product).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Database error: " + err.Error(),
-		})
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found or access denied"})
 		return
 	}
 
@@ -171,7 +224,7 @@ func ProductDetails(c *gin.Context) {
 	}
 
 	var product models.Product
-	if err := database.DB.First(&product, idInt).Error; err != nil {
+	if err := database.DB.Preload("Status").First(&product, idInt).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found"})
 		return
 	}
@@ -183,6 +236,7 @@ func ProductDetails(c *gin.Context) {
 			"name":        product.Name,
 			"description": product.Description,
 			"price":       product.Price,
+			"status":      product.Status,
 		},
 	})
 }
@@ -206,8 +260,19 @@ func GetMyProductsPaginate(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	var products []models.Product
+	var total int64
 
-	if err := database.DB.Preload("Status").Where("seller_id = ?", userID).Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+	query := database.DB.Model(&models.Product{}).Where("seller_id = ?", userID)
+
+	// Get total count for this user
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+
+	if err := query.Preload("Status").Preload("ProductCondition").Preload("Category").Limit(limit).Offset(offset).Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
@@ -220,6 +285,8 @@ func GetMyProductsPaginate(c *gin.Context) {
 		Description string  `json:"description"`
 		Price       float64 `json:"price"`
 		Status      string  `json:"status"`
+		Condition   string  `json:"condition"`
+		Category    string  `json:"category"`
 	}
 
 	var productResponses []ProductResponse
@@ -231,13 +298,15 @@ func GetMyProductsPaginate(c *gin.Context) {
 			Description: product.Description,
 			Price:       product.Price,
 			Status:      product.Status.Name,
+			Condition:   product.ProductCondition.Name,
+			Category:    product.Category.Name,
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "My products retrieved successfully",
 		"products": gin.H{
-			"total": len(productResponses),
+			"total": total,
 			"items": productResponses,
 		},
 	})
