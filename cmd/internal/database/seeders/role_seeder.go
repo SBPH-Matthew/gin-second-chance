@@ -9,7 +9,7 @@ import (
 
 func SeedRoles() {
 
-	roles := []string{"admin", "user", "staff"}
+	roles := []string{"Admin", "User", "Staff"}
 
 	for _, role := range roles {
 		database.DB.FirstOrCreate(

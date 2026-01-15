@@ -17,6 +17,9 @@ func RegisterRoutes(r *gin.Engine) {
 
 	api := r.Group("/api")
 	{
+		// Serve static files for uploads under /api/uploads
+		api.Static("/uploads", "./uploads")
+		
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
 		api.GET("/me", middleware.AuthRequired(), handlers.Profile)
@@ -86,6 +89,22 @@ func RegisterRoutes(r *gin.Engine) {
 		categoryStatus.POST("/", middleware.AuthRequired(), handlers.CreateCategoryStatus)
 		categoryStatus.PUT("/:id", middleware.AuthRequired(), handlers.UpdateCategoryStatus)
 		categoryStatus.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteCategoryStatus)
+	}
+
+	vehicle := api.Group("/vehicle")
+	{
+		vehicle.GET("/", middleware.AuthRequired(), handlers.VehiclePaginate)
+		vehicle.POST("/", middleware.AuthRequired(), handlers.CreateVehicle)
+		vehicle.PUT("/:id", middleware.AuthRequired(), handlers.UpdateVehicle)
+		vehicle.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteVehicle)
+	}
+
+	vehicleType := api.Group("/vehicle-type")
+	{
+		vehicleType.GET("/", middleware.AuthRequired(), handlers.GetAllVehicleTypes)
+		vehicleType.POST("/", middleware.AuthRequired(), handlers.CreateVehicleType)
+		vehicleType.PUT("/:id", middleware.AuthRequired(), handlers.UpdateVehicleType)
+		vehicleType.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteVehicleType)
 	}
 
 }

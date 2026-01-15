@@ -14,28 +14,15 @@ import (
 func CreateProductStatus(c *gin.Context) {
 	var body requests.CreateProductStatusRequest
 
-	id := c.Param("id")
-
-	idInt, err := strconv.Atoi(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		return
 	}
 
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	if err := utils.Validate.Struct(body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	if err := database.DB.Create(&models.ProductStatus{
-		ID:   uint(idInt),
+	productStatus := models.ProductStatus{
 		Name: body.Name,
-	}).Error; err != nil {
+	}
+
+	if err := database.DB.Create(&productStatus).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
@@ -52,29 +39,30 @@ func UpdateProductStatus(c *gin.Context) {
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
 		return
 	}
 
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		return
 	}
 
-	if err := utils.Validate.Struct(body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	if err := database.DB.Model(&models.ProductStatus{}).Where("id = ?", idInt).Updates(models.ProductStatus{
+	productStatus := models.ProductStatus{
+		ID:   uint(idInt),
 		Name: body.Name,
-	}).Error; err != nil {
+	}
+
+	if err := database.DB.Model(&productStatus).Updates(productStatus).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product status updated successfully",
+		"product_status": gin.H{
+			"id":   productStatus.ID,
+			"name": productStatus.Name,
+		},
 	})
 }
 
