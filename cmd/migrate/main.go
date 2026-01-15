@@ -39,6 +39,7 @@ func runMigrate() {
 	log.Println("➡ Running migration")
 
 	err := database.DB.AutoMigrate(
+		&models.Role{},
 		&models.User{},
 		&models.CategoryGroup{},
 		&models.CategoryStatus{},
@@ -71,14 +72,14 @@ func runFresh() {
 		&models.Category{},
 		&models.CategoryStatus{},
 		&models.CategoryGroup{},
+		&models.Vehicle{},
+		&models.VehicleType{},
 		&models.User{},
+		&models.Role{},
 		&models.Region{},
 		&models.Province{},
 		&models.City{},
 		&models.Barangay{},
-		&models.Comment{},
-		&models.VehicleType{},
-		&models.Vehicle{},
 	)
 	if err != nil {
 		log.Fatalf("drop failed: %v", err)
