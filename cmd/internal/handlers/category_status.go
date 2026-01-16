@@ -29,10 +29,6 @@ func CreateCategoryStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category status created successfully",
-		"category_status": gin.H{
-			"id":   categoryStatus.ID,
-			"name": categoryStatus.Name,
-		},
 	})
 }
 
@@ -44,23 +40,9 @@ func GetAllCategoryStatuses(c *gin.Context) {
 		return
 	}
 
-	type CategoryStatus struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	categoryStatusesResponse := []CategoryStatus{}
-
-	for _, categoryStatus := range categoryStatuses {
-		categoryStatusesResponse = append(categoryStatusesResponse, CategoryStatus{
-			ID:   categoryStatus.ID,
-			Name: categoryStatus.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message":           "Category statuses retrieved successfully",
-		"category_statuses": categoryStatusesResponse,
+		"category_statuses": categoryStatuses,
 	})
 }
 
@@ -91,10 +73,6 @@ func UpdateCategoryStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category status updated successfully",
-		"category_status": gin.H{
-			"id":   categoryStatus.ID,
-			"name": categoryStatus.Name,
-		},
 	})
 }
 

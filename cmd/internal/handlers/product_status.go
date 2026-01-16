@@ -59,10 +59,6 @@ func UpdateProductStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product status updated successfully",
-		"product_status": gin.H{
-			"id":   productStatus.ID,
-			"name": productStatus.Name,
-		},
 	})
 }
 
@@ -93,21 +89,8 @@ func GetAllProductStatus(c *gin.Context) {
 		return
 	}
 
-	type StatusResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	var statusResponses []StatusResponse
-	for _, status := range statuses {
-		statusResponses = append(statusResponses, StatusResponse{
-			ID:   status.ID,
-			Name: status.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message":        "Product statuses retrieved successfully",
-		"product_status": statusResponses,
+		"product_status": statuses,
 	})
 }

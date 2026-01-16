@@ -4,14 +4,13 @@ import "gorm.io/gorm"
 
 type Category struct {
 	gorm.Model
-	ID   uint   `gorm:"primaryKey;autoIncrement"`
-	Name string `gorm:"unique;not null"`
+	ID              uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name            string `gorm:"unique;not null" json:"name"`
+	StatusID        uint   `json:"status_id"`
+	CategoryGroupID uint   `json:"category_group_id"`
 
-	StatusID        uint
-	CategoryGroupID uint
-
-	Status        CategoryStatus
-	CategoryGroup CategoryGroup
+	Status        CategoryStatus `json:"status"`
+	CategoryGroup CategoryGroup  `json:"category_group"`
 }
 
 func (c *Category) BeforeCreate(tx *gorm.DB) error {

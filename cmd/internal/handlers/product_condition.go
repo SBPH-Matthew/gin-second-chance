@@ -34,10 +34,6 @@ func CreateProductCondition(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Product condition created successfully",
-		"product_condition": gin.H{
-			"id":   productCondition.ID,
-			"name": productCondition.Name,
-		},
 	})
 }
 
@@ -51,23 +47,9 @@ func GetAllProductCondition(c *gin.Context) {
 		return
 	}
 
-	type ProductConditionResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	var productConditionResponses []ProductConditionResponse
-
-	for _, productCondition := range productConditions {
-		productConditionResponses = append(productConditionResponses, ProductConditionResponse{
-			ID:   productCondition.ID,
-			Name: productCondition.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message":            "Product conditions retrieved successfully",
-		"product_conditions": productConditionResponses,
+		"product_conditions": productConditions,
 	})
 }
 
@@ -104,10 +86,6 @@ func UpdateProductCondition(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product condition updated successfully",
-		"product_condition": gin.H{
-			"id":   productCondition.ID,
-			"name": productCondition.Name,
-		},
 	})
 }
 

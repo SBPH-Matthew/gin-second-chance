@@ -14,6 +14,7 @@ import (
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/requests"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -165,6 +166,24 @@ func CreateProduct(c *gin.Context) {
 		})
 		return
 	}
+
+	// Create notification for admins about new product
+	reference := fmt.Sprintf("product:%d", product.ID)
+	services.NotifyAdmins(
+		"New Product Created",
+		fmt.Sprintf("A new product '%s' has been created by %s %s", product.Name, user.FirstName, user.LastName),
+		"info",
+		&reference,
+	)
+
+	// Notify the seller
+	services.NotifyUser(
+		user.ID,
+		"Product Created Successfully",
+		fmt.Sprintf("Your product '%s' has been created successfully", product.Name),
+		"success",
+		&reference,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product created successfully",
@@ -384,80 +403,113 @@ func UpdateProduct(c *gin.Context) {
 }
 
 func ProductPaginate(c *gin.Context) {
-	page := c.Query("page")
-	limit := c.Query("limit")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+	search := c.Query("search")
 
-	if page == "" || limit == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Missing page or limit query parameter"})
-		return
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
 	}
 
-	pageInt, err := strconv.Atoi(page)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid page query parameter"})
-		return
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
 	}
 
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid limit query parameter"})
-		return
-	}
-
-	offset := (pageInt - 1) * limitInt
+	offset := (page - 1) * limit
 
 	var products []models.Product
 	var total int64
 
-	query := database.DB.Model(&models.Product{})
+	// Build base query for counting
+	baseQuery := database.DB.Model(&models.Product{})
 
-	// Get total count
-	if err := query.Count(&total).Error; err != nil {
+	// Apply search filter if provided
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		baseQuery = baseQuery.Joins("LEFT JOIN categories ON products.category_id = categories.id").
+			Joins("LEFT JOIN product_statuses ON products.status_id = product_statuses.id").
+			Joins("LEFT JOIN product_conditions ON products.product_condition_id = product_conditions.id").
+			Where(
+				"products.name ILIKE ? OR products.description ILIKE ? OR categories.name ILIKE ? OR product_statuses.name ILIKE ? OR product_conditions.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm, searchTerm, searchTerm,
+			).
+			Group("products.id") // Group by to avoid duplicates from joins
+	}
+
+	// Get total count with search filter applied
+	if err := baseQuery.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
 
-	// Get paginated items
-	if err := query.Preload("Status").Preload("ProductCondition").Preload("Category").Offset(offset).Limit(limitInt).Find(&products).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Database error: " + err.Error(),
-		})
-		return
-	}
+	// Build query for fetching products
+	// Use a subquery approach to get matching IDs first, then fetch with Preload
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		var productIDs []uint
+		if err := database.DB.Model(&models.Product{}).
+			Joins("LEFT JOIN categories ON products.category_id = categories.id").
+			Joins("LEFT JOIN product_statuses ON products.status_id = product_statuses.id").
+			Joins("LEFT JOIN product_conditions ON products.product_condition_id = product_conditions.id").
+			Where(
+				"products.name ILIKE ? OR products.description ILIKE ? OR categories.name ILIKE ? OR product_statuses.name ILIKE ? OR product_conditions.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm, searchTerm, searchTerm,
+			).
+			Group("products.id").
+			Pluck("products.id", &productIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Database error: " + err.Error(),
+			})
+			return
+		}
 
-	type ProductResponse struct {
-		ID          uint                    `json:"id"`
-		Name        string                  `json:"name"`
-		Description string                  `json:"description"`
-		Price       float64                 `json:"price"`
-		Images      models.StringArray      `json:"images"`
-		Status      models.ProductStatus    `json:"status"`
-		Condition   models.ProductCondition `json:"condition"`
-		Category    models.Category         `json:"category"`
-	}
+		// If no matching IDs, return empty result
+		if len(productIDs) == 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Products paginated successfully",
+				"products": gin.H{
+					"total": 0,
+					"items": []models.Product{},
+				},
+			})
+			return
+		}
 
-	var productResponses []ProductResponse
-
-	for _, product := range products {
-		productResponses = append(productResponses, ProductResponse{
-			ID:          product.ID,
-			Name:        product.Name,
-			Description: product.Description,
-			Price:       product.Price,
-			Images:      product.Images,
-			Status:      product.Status,
-			Condition:   product.ProductCondition,
-			Category:    product.Category,
-		})
+		// Fetch products by IDs with Preload
+		if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").
+			Where("products.id IN ?", productIDs).
+			Order("id asc").
+			Offset(offset).
+			Limit(limit).
+			Find(&products).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Database error: " + err.Error(),
+			})
+			return
+		}
+	} else {
+		// No search - fetch all with Preload
+		if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").
+			Order("id asc").
+			Offset(offset).
+			Limit(limit).
+			Find(&products).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Database error: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Products paginated successfully",
 		"products": gin.H{
 			"total": total,
-			"items": productResponses,
+			"items": products,
 		},
 	})
 }
@@ -472,6 +524,13 @@ func DeleteProduct(c *gin.Context) {
 
 	userID := c.GetUint("user_id")
 
+	// Get product before deletion for notification
+	var product models.Product
+	if err := database.DB.Where("id = ? AND seller_id = ?", idInt, userID).First(&product).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found or access denied"})
+		return
+	}
+
 	// Only allow deletion if the user owns the product
 	result := database.DB.Where("id = ? AND seller_id = ?", idInt, userID).Delete(&models.Product{})
 	if result.Error != nil {
@@ -485,6 +544,15 @@ func DeleteProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found or access denied"})
 		return
 	}
+
+	// Notify admins about product deletion
+	reference := fmt.Sprintf("product:%d", product.ID)
+	services.NotifyAdmins(
+		"Product Deleted",
+		fmt.Sprintf("Product '%s' has been deleted by the seller", product.Name),
+		"warning",
+		&reference,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Product deleted successfully",
@@ -548,35 +616,11 @@ func GetMyProductsPaginate(c *gin.Context) {
 		return
 	}
 
-	type ProductResponse struct {
-		ID          uint    `json:"id"`
-		Name        string  `json:"name"`
-		Description string  `json:"description"`
-		Price       float64 `json:"price"`
-		Status      string  `json:"status"`
-		Condition   string  `json:"condition"`
-		Category    string  `json:"category"`
-	}
-
-	var productResponses []ProductResponse
-
-	for _, product := range products {
-		productResponses = append(productResponses, ProductResponse{
-			ID:          product.ID,
-			Name:        product.Name,
-			Description: product.Description,
-			Price:       product.Price,
-			Status:      product.Status.Name,
-			Condition:   product.ProductCondition.Name,
-			Category:    product.Category.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "My products retrieved successfully",
 		"products": gin.H{
 			"total": total,
-			"items": productResponses,
+			"items": products,
 		},
 	})
 }

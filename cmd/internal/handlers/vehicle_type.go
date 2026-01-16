@@ -28,10 +28,6 @@ func CreateVehicleType(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Vehicle type created successfully",
-		"vehicle_type": gin.H{
-			"id":   vehicleType.ID,
-			"name": vehicleType.Name,
-		},
 	})
 }
 
@@ -49,24 +45,11 @@ func GetAllVehicleTypes(c *gin.Context) {
 		return
 	}
 
-	type VehicleTypeResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	vehicleTypeResponse := make([]VehicleTypeResponse, 0)
-	for _, vt := range vehicleTypes {
-		vehicleTypeResponse = append(vehicleTypeResponse, VehicleTypeResponse{
-			ID:   vt.ID,
-			Name: vt.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicle types retrieved successfully",
 		"vehicleTypes": gin.H{
 			"total": total,
-			"items": vehicleTypeResponse,
+			"items": vehicleTypes,
 		},
 	})
 }
@@ -100,10 +83,6 @@ func UpdateVehicleType(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicle type updated successfully",
-		"vehicle_type": gin.H{
-			"id":   vehicleType.ID,
-			"name": vehicleType.Name,
-		},
 	})
 }
 

@@ -36,21 +36,20 @@ func (a *StringArray) Scan(value interface{}) error {
 
 type Product struct {
 	gorm.Model
-	ID          uint        `gorm:"primaryKey;autoIncrement"`
-	Name        string      `gorm:"not null"`
-	Description string      `gorm:"not null"`
-	Price       float64     `gorm:"not null"`
-	Images      StringArray `gorm:"type:json"`
+	ID                uint        `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name              string      `gorm:"not null" json:"name"`
+	Description       string      `gorm:"not null" json:"description"`
+	Price             float64     `gorm:"not null" json:"price"`
+	Images            StringArray `gorm:"type:json" json:"images"`
+	CategoryID        uint        `json:"category_id"`
+	StatusID          uint        `json:"status_id"`
+	SellerID          uint        `json:"seller_id"`
+	ProductConditionID uint       `json:"product_condition_id"`
 
-	CategoryID         uint
-	StatusID           uint
-	SellerID           uint
-	ProductConditionID uint
-
-	Category         Category
-	Status           ProductStatus
-	Seller           User
-	ProductCondition ProductCondition
+	Category         Category         `json:"category"`
+	Status           ProductStatus    `json:"status"`
+	Seller           User             `json:"seller"`
+	ProductCondition ProductCondition `json:"product_condition"`
 }
 
 func (p *Product) BeforeCreate(tx *gorm.DB) error {

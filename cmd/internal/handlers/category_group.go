@@ -28,10 +28,6 @@ func CreateCategoryGroup(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Category group created successfully",
-		"category_group": gin.H{
-			"id":   categoryGroup.ID,
-			"name": categoryGroup.Name,
-		},
 	})
 }
 
@@ -42,23 +38,9 @@ func GetAllCategoryGroups(c *gin.Context) {
 		return
 	}
 
-	type CategoryGroupResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	categoryGroupResponses := []CategoryGroupResponse{}
-
-	for _, categoryGroup := range categoryGroups {
-		categoryGroupResponses = append(categoryGroupResponses, CategoryGroupResponse{
-			ID:   categoryGroup.ID,
-			Name: categoryGroup.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message":         "Category groups retrieved successfully",
-		"category_groups": categoryGroupResponses,
+		"category_groups": categoryGroups,
 	})
 }
 
@@ -89,10 +71,7 @@ func UpdateCategoryGroup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category group updated successfully",
-		"category_group": gin.H{
-			"id":   categoryGroup.ID,
-			"name": categoryGroup.Name,
-		}})
+	})
 }
 
 func DeleteCategoryGroup(c *gin.Context) {

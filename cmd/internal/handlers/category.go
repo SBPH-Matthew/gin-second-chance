@@ -51,17 +51,13 @@ func CreateCategory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category created successfully",
-		"category": gin.H{
-			"id":     category.ID,
-			"name":   category.Name,
-			"status": category.Status.Name,
-		},
 	})
 }
 
 func CategoryPaginate(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
+	search := c.Query("search")
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -76,48 +72,86 @@ func CategoryPaginate(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	var categories []models.Category
-	var total int64 // Use int64 for GORM Count
+	var total int64
 
-	// 1. Get the TOTAL count of all records (without offset/limit)
-	if err := database.DB.Model(&models.Category{}).Count(&total).Error; err != nil {
+	// Build base query for counting
+	baseQuery := database.DB.Model(&models.Category{})
+
+	// Apply search filter if provided
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		baseQuery = baseQuery.Joins("LEFT JOIN category_statuses ON categories.status_id = category_statuses.id").
+			Joins("LEFT JOIN category_groups ON categories.category_group_id = category_groups.id").
+			Where(
+				"categories.name ILIKE ? OR category_statuses.name ILIKE ? OR category_groups.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm,
+			).
+			Group("categories.id") // Group by to avoid duplicates from joins
+	}
+
+	// Get total count with search filter applied
+	if err := baseQuery.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
 	}
 
-	// 2. Fetch the specific page items
-	if err := database.DB.Preload("Status").Preload("CategoryGroup").
-		Order("id asc").
-		Offset(offset).
-		Limit(limit).
-		Find(&categories).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
-		return
+	// Build query for fetching categories
+	// Use a subquery approach to get matching IDs first, then fetch with Preload
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		var categoryIDs []uint
+		if err := database.DB.Model(&models.Category{}).
+			Joins("LEFT JOIN category_statuses ON categories.status_id = category_statuses.id").
+			Joins("LEFT JOIN category_groups ON categories.category_group_id = category_groups.id").
+			Where(
+				"categories.name ILIKE ? OR category_statuses.name ILIKE ? OR category_groups.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm,
+			).
+			Group("categories.id").
+			Pluck("categories.id", &categoryIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+			return
+		}
+
+		// If no matching IDs, return empty result
+		if len(categoryIDs) == 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Categories retrieved successfully",
+				"categories": gin.H{
+					"total": 0,
+					"items": []models.Category{},
+				},
+			})
+			return
+		}
+
+		// Fetch categories by IDs with Preload
+		if err := database.DB.Preload("Status").Preload("CategoryGroup").
+			Where("categories.id IN ?", categoryIDs).
+			Order("id asc").
+			Offset(offset).
+			Limit(limit).
+			Find(&categories).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+			return
+		}
+	} else {
+		// No search - fetch all with Preload
+		if err := database.DB.Preload("Status").Preload("CategoryGroup").
+			Order("id asc").
+			Offset(offset).
+			Limit(limit).
+			Find(&categories).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
+			return
+		}
 	}
 
-	// 3. Map to Response struct
-	type CategoryResponse struct {
-		ID     uint   `json:"id"`
-		Name   string `json:"name"`
-		Status uint   `json:"status"`
-		Group  uint   `json:"category_group"`
-	}
-
-	categoryResponse := make([]CategoryResponse, 0)
-	for _, cat := range categories {
-		categoryResponse = append(categoryResponse, CategoryResponse{
-			ID:     cat.ID,
-			Name:   cat.Name,
-			Status: cat.StatusID,
-			Group:  cat.CategoryGroupID,
-		})
-	}
-
-	// 4. Return both the items and the actual total
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Categories retrieved successfully",
 		"categories": gin.H{
-			"total": total, // This is now the global total (e.g., 100)
-			"items": categoryResponse,
+			"total": total,
+			"items": categories,
 		},
 	})
 }
@@ -181,12 +215,6 @@ func UpdateCategory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Category updated successfully",
-		"category": gin.H{
-			"id":             category.ID,
-			"name":           category.Name,
-			"status":         category.Status.Name,
-			"category_group": category.CategoryGroup.Name,
-		},
 	})
 }
 
@@ -261,25 +289,8 @@ func GetAllCategory(c *gin.Context) {
 		return
 	}
 
-	type CategoryResponse struct {
-		ID     uint   `json:"id"`
-		Name   string `json:"name"`
-		Status uint   `json:"status"`
-		Group  uint   `json:"category_group"`
-	}
-
-	categoryResponse := make([]CategoryResponse, 0)
-	for _, cat := range categories {
-		categoryResponse = append(categoryResponse, CategoryResponse{
-			ID:     cat.ID,
-			Name:   cat.Name,
-			Status: cat.StatusID,
-			Group:  cat.CategoryGroupID,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Categories retrieved successfully",
-		"categories": categoryResponse,
+		"categories": categories,
 	})
 }

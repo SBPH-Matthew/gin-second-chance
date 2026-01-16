@@ -22,24 +22,11 @@ func GetRoles(c *gin.Context) {
 		return
 	}
 
-	type RolesResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	roleResponse := make([]RolesResponse, 0)
-	for _, role := range roles {
-		roleResponse = append(roleResponse, RolesResponse{
-			ID:   role.ID,
-			Name: role.Name,
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Roles retrieved successfully",
 		"roles": gin.H{
 			"total": total,
-			"items": roleResponse,
+			"items": roles,
 		},
 	})
 }

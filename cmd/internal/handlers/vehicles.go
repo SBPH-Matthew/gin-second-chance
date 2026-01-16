@@ -13,6 +13,7 @@ import (
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -158,12 +159,26 @@ func CreateVehicle(c *gin.Context) {
 		return
 	}
 
-	// Load relationships
-	database.DB.Preload("VehicleType").Preload("Seller").First(&vehicle, vehicle.ID)
+	// Create notification for admins about new vehicle
+	reference := fmt.Sprintf("vehicle:%d", vehicle.ID)
+	services.NotifyAdmins(
+		"New Vehicle Created",
+		fmt.Sprintf("A new vehicle '%s %s' has been created by %s %s", vehicle.VehicleMake, vehicle.VehicleModel, user.FirstName, user.LastName),
+		"info",
+		&reference,
+	)
+
+	// Notify the seller
+	services.NotifyUser(
+		user.ID,
+		"Vehicle Created Successfully",
+		fmt.Sprintf("Your vehicle '%s %s' has been created successfully", vehicle.VehicleMake, vehicle.VehicleModel),
+		"success",
+		&reference,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicle created successfully",
-		"vehicle": vehicle,
 	})
 }
 
@@ -344,18 +359,15 @@ func UpdateVehicle(c *gin.Context) {
 		return
 	}
 
-	// Reload relationships
-	database.DB.Preload("VehicleType").Preload("Seller").First(&existingVehicle, existingVehicle.ID)
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicle updated successfully",
-		"vehicle": existingVehicle,
 	})
 }
 
 func VehiclePaginate(c *gin.Context) {
 	page := c.Query("page")
 	limit := c.Query("limit")
+	search := c.Query("search")
 
 	if page == "" || limit == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Missing page or limit query parameter"})
@@ -379,14 +391,40 @@ func VehiclePaginate(c *gin.Context) {
 
 	offset := (pageInt - 1) * limitInt
 
-	// Count total
-	if err := database.DB.Model(&models.Vehicle{}).Count(&total).Error; err != nil {
+	// Build base query
+	query := database.DB.Model(&models.Vehicle{})
+
+	// Apply search filter if provided
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		query = query.Joins("LEFT JOIN vehicle_types ON vehicles.vehicle_type_id = vehicle_types.id").
+			Where(
+				"vehicles.vehicle_make ILIKE ? OR vehicles.vehicle_model ILIKE ? OR vehicles.location ILIKE ? OR vehicles.description ILIKE ? OR CAST(vehicles.year AS TEXT) ILIKE ? OR CAST(vehicles.price AS TEXT) ILIKE ? OR vehicle_types.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm,
+			)
+	}
+
+	// Count total with search filter applied
+	if err := query.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
+	// Build query for fetching vehicles with search filter
+	fetchQuery := database.DB.Preload("VehicleType").Preload("Seller")
+
+	// Apply search filter to fetch query if provided
+	if search != "" && strings.TrimSpace(search) != "" {
+		searchTerm := "%" + strings.TrimSpace(search) + "%"
+		fetchQuery = fetchQuery.Joins("LEFT JOIN vehicle_types ON vehicles.vehicle_type_id = vehicle_types.id").
+			Where(
+				"vehicles.vehicle_make ILIKE ? OR vehicles.vehicle_model ILIKE ? OR vehicles.location ILIKE ? OR vehicles.description ILIKE ? OR CAST(vehicles.year AS TEXT) ILIKE ? OR CAST(vehicles.price AS TEXT) ILIKE ? OR vehicle_types.name ILIKE ?",
+				searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm,
+			)
+	}
+
 	// Fetch vehicles with pagination and preload relationships
-	if err := database.DB.Preload("VehicleType").Preload("Seller").
+	if err := fetchQuery.
 		Offset(offset).
 		Limit(limitInt).
 		Order("id desc").
@@ -430,6 +468,15 @@ func DeleteVehicle(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+
+	// Notify admins about vehicle deletion
+	reference := fmt.Sprintf("vehicle:%d", vehicle.ID)
+	services.NotifyAdmins(
+		"Vehicle Deleted",
+		fmt.Sprintf("Vehicle '%s %s' has been deleted", vehicle.VehicleMake, vehicle.VehicleModel),
+		"warning",
+		&reference,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicle deleted successfully",

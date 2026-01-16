@@ -7,14 +7,14 @@ import (
 
 type User struct {
 	gorm.Model
-	ID        uint   `gorm:"primaryKey;autoIncrement"`
-	FirstName string `gorm:"not null"`
-	LastName  string `gorm:"not null"`
-	Email     string `gorm:"unique; not null"`
-	Password  string `gorm:"not null"`
+	ID        uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	FirstName string `gorm:"not null" json:"first_name"`
+	LastName  string `gorm:"not null" json:"last_name"`
+	Email     string `gorm:"unique; not null" json:"email"`
+	Password  string `gorm:"not null" json:"-"`
 
-	RoleID uint
-	Role   Role
+	RoleID uint `json:"role_id"`
+	Role   Role `json:"role"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

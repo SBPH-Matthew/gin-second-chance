@@ -41,6 +41,8 @@ func runMigrate() {
 	err := database.DB.AutoMigrate(
 		&models.Role{},
 		&models.User{},
+		&models.Notification{},
+		&models.NotificationRead{},
 		&models.CategoryGroup{},
 		&models.CategoryStatus{},
 		&models.Category{},
@@ -74,6 +76,8 @@ func runFresh() {
 		&models.CategoryGroup{},
 		&models.Vehicle{},
 		&models.VehicleType{},
+		&models.NotificationRead{},
+		&models.Notification{},
 		&models.User{},
 		&models.Role{},
 		&models.Region{},

@@ -107,4 +107,11 @@ func RegisterRoutes(r *gin.Engine) {
 		vehicleType.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteVehicleType)
 	}
 
+	notification := api.Group("/notification")
+	{
+		notification.GET("/", middleware.AuthRequired(), handlers.GetNotifications)
+		notification.PUT("/:id/read", middleware.AuthRequired(), handlers.MarkNotificationAsRead)
+		notification.PUT("/read-all", middleware.AuthRequired(), handlers.MarkAllNotificationsAsRead)
+	}
+
 }

@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/requests"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/services"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -47,38 +49,11 @@ func GetPaginateUser(c *gin.Context) {
 		return
 	}
 
-	type RoleResponse struct {
-		ID   uint   `json:"id"`
-		Name string `json:"name"`
-	}
-
-	type UserResponse struct {
-		ID        uint         `json:"id"`
-		FirstName string       `json:"first_name"`
-		LastName  string       `json:"last_name"`
-		Email     string       `json:"email"`
-		Role      RoleResponse `json:"role"`
-	}
-
-	userResponse := make([]UserResponse, 0)
-	for _, user := range users {
-		userResponse = append(userResponse, UserResponse{
-			ID:        user.ID,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Email:     user.Email,
-			Role: RoleResponse{
-				ID:   user.Role.ID,
-				Name: user.Role.Name,
-			},
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User retrieved successfully",
 		"users": gin.H{
 			"total": total,
-			"items": userResponse,
+			"items": users,
 		},
 	})
 }
@@ -142,6 +117,24 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Create notification for admins about new user
+	reference := fmt.Sprintf("user:%d", user.ID)
+	services.NotifyAdmins(
+		"New User Created",
+		fmt.Sprintf("A new user '%s %s' (%s) has been created", user.FirstName, user.LastName, user.Email),
+		"info",
+		&reference,
+	)
+
+	// Notify the new user
+	services.NotifyUser(
+		user.ID,
+		"Account Created",
+		fmt.Sprintf("Your account has been created successfully. Welcome, %s!", user.FirstName),
+		"success",
+		&reference,
+	)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User created successfully",
 	})
@@ -187,14 +180,26 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Create notification for admins about new registration
+	reference := fmt.Sprintf("user:%d", user.ID)
+	services.NotifyAdmins(
+		"New User Registration",
+		fmt.Sprintf("A new user '%s %s' (%s) has registered", user.FirstName, user.LastName, user.Email),
+		"info",
+		&reference,
+	)
+
+	// Notify the new user
+	services.NotifyUser(
+		user.ID,
+		"Registration Successful",
+		fmt.Sprintf("Welcome to Second Chance! Your account has been created successfully, %s!", user.FirstName),
+		"success",
+		&reference,
+	)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Registration successful",
-		"user": gin.H{
-			"id":         user.ID,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"email":      user.Email,
-		},
 	})
 }
 
@@ -243,11 +248,6 @@ func Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login successful",
-		"user": gin.H{
-			"id":         user.ID,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-		},
 	})
 }
 
@@ -388,8 +388,13 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	user := models.User{
-		ID: uint(idInt),
+	// Get user before deletion for notification
+	var user models.User
+	if err := database.DB.First(&user, idInt).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"message": "User not found",
+		})
+		return
 	}
 
 	if err := database.DB.Delete(&user).Error; err != nil {
@@ -399,7 +404,17 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// Notify admins about user deletion
+	reference := fmt.Sprintf("user:%d", user.ID)
+	services.NotifyAdmins(
+		"User Deleted",
+		fmt.Sprintf("User '%s %s' (%s) has been deleted", user.FirstName, user.LastName, user.Email),
+		"warning",
+		&reference,
+	)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User deleted successfully",
 	})
+
 }
