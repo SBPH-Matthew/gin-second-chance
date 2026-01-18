@@ -40,6 +40,7 @@ type Product struct {
 	Name              string      `gorm:"not null" json:"name"`
 	Description       string      `gorm:"not null" json:"description"`
 	Price             float64     `gorm:"not null" json:"price"`
+	Location          string      `gorm:"not null" json:"location"`
 	Images            StringArray `gorm:"type:json" json:"images"`
 	CategoryID        uint        `json:"category_id"`
 	StatusID          uint        `json:"status_id"`

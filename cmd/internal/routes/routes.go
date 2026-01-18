@@ -2,11 +2,20 @@ package routes
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/handlers"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
+
+func getUploadDir() string {
+	dir := os.Getenv("UPLOAD_DIR")
+	if dir == "" {
+		dir = "./uploads"
+	}
+	return dir
+}
 
 func RegisterRoutes(r *gin.Engine) {
 	r.GET("/", func(c *gin.Context) {
@@ -18,10 +27,11 @@ func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	{
 		// Serve static files for uploads under /api/uploads
-		api.Static("/uploads", "./uploads")
+		api.Static("/uploads", getUploadDir())
 		
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
+		api.POST("/logout", handlers.Logout)
 		api.GET("/me", middleware.AuthRequired(), handlers.Profile)
 	}
 

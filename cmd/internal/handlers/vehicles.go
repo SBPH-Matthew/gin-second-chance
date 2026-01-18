@@ -72,7 +72,7 @@ func CreateVehicle(c *gin.Context) {
 		formFiles := multipartForm.File["images"]
 
 		// Create uploads directory if it doesn't exist
-		uploadDir := "./uploads/vehicles"
+		uploadDir := filepath.Join(getUploadDir(), "vehicles")
 		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": "Failed to create upload directory: " + err.Error(),
@@ -258,8 +258,9 @@ func UpdateVehicle(c *gin.Context) {
 		if !shouldKeep {
 			// Remove the file from storage
 			// oldImagePath is like "/uploads/vehicles/filename.jpg"
-			// Convert to "./uploads/vehicles/filename.jpg"
-			fullPath := fmt.Sprintf(".%s", oldImagePath)
+			// Convert to full path using upload dir
+			relativePath := strings.TrimPrefix(oldImagePath, "/uploads")
+			fullPath := filepath.Join(getUploadDir(), relativePath)
 			if err := os.Remove(fullPath); err != nil {
 				// Log error but don't fail the update
 				fmt.Printf("Failed to delete image file %s: %v\n", fullPath, err)
@@ -273,7 +274,7 @@ func UpdateVehicle(c *gin.Context) {
 	if err == nil && multipartForm != nil {
 		formFiles := multipartForm.File["images"]
 		if len(formFiles) > 0 {
-			uploadDir := "./uploads/vehicles"
+			uploadDir := filepath.Join(getUploadDir(), "vehicles")
 			if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"message": "Failed to create upload directory: " + err.Error(),

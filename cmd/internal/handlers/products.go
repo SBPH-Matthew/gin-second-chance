@@ -15,8 +15,17 @@ import (
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/requests"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/services"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/utils"
 	"github.com/gin-gonic/gin"
 )
+
+func getUploadDir() string {
+	dir := os.Getenv("UPLOAD_DIR")
+	if dir == "" {
+		dir = "./uploads"
+	}
+	return dir
+}
 
 func CreateProduct(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -27,39 +36,23 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form
-	if err := c.Request.ParseMultipartForm(32 << 20); err != nil { // 32 MB max
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Failed to parse multipart form: " + err.Error()})
-		return
+	// Validate form data
+	var req requests.CreateProductRequest
+	if err := utils.ValidateBodyFormData(c, &req); err != nil {
+		return // Error response already sent by ValidateBodyFormData
 	}
 
-	// Get form values
-	name := c.PostForm("name")
-	description := c.PostForm("description")
-	priceStr := c.PostForm("price")
-	status := c.PostForm("status")
-	condition := c.PostForm("condition")
-	category := c.PostForm("category")
+	// Price is already parsed by the validator
+	price := req.Price
 
-	// Validate required fields
-	if name == "" || priceStr == "" || status == "" || condition == "" || category == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Missing required fields"})
-		return
-	}
-
-	price, err := strconv.ParseFloat(priceStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid price"})
-		return
-	}
-
-	intStatus, err := strconv.Atoi(status)
+	// Parse IDs
+	intStatus, err := strconv.Atoi(req.Status)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid status ID"})
 		return
 	}
 
-	intCondition, err := strconv.Atoi(condition)
+	intCondition, err := strconv.Atoi(req.Condition)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid condition ID",
@@ -67,7 +60,7 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	intCategory, err := strconv.Atoi(category)
+	intCategory, err := strconv.Atoi(req.Category)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid category ID",
@@ -82,7 +75,7 @@ func CreateProduct(c *gin.Context) {
 		formFiles := multipartForm.File["images"]
 
 		// Create uploads directory if it doesn't exist
-		uploadDir := "./uploads/products"
+		uploadDir := filepath.Join(getUploadDir(), "products")
 		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": "Failed to create upload directory: " + err.Error(),
@@ -150,9 +143,10 @@ func CreateProduct(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Name:               name,
-		Description:        description,
+		Name:               req.Name,
+		Description:        req.Description,
 		Price:              price,
+		Location:           req.Location,
 		Images:             imagePaths,
 		StatusID:           uint(intStatus),
 		SellerID:           user.ID,
@@ -218,6 +212,7 @@ func UpdateProduct(c *gin.Context) {
 			existingProduct.Name = body.Name
 			existingProduct.Description = body.Description
 			existingProduct.Price = body.Price
+			existingProduct.Location = body.Location
 			existingProduct.StatusID = uint(intStatus)
 			existingProduct.ProductConditionID = uint(intCondition)
 			existingProduct.CategoryID = uint(intCategory)
@@ -253,6 +248,9 @@ func UpdateProduct(c *gin.Context) {
 		if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
 			existingProduct.Price = price
 		}
+	}
+	if location := c.PostForm("location"); location != "" {
+		existingProduct.Location = location
 	}
 	if status := c.PostForm("status"); status != "" {
 		if intStatus, err := strconv.Atoi(status); err == nil {
@@ -296,8 +294,9 @@ func UpdateProduct(c *gin.Context) {
 		if !shouldKeep {
 			// Remove the file from storage
 			// oldImagePath is like "/uploads/products/filename.jpg"
-			// Convert to "./uploads/products/filename.jpg"
-			fullPath := fmt.Sprintf(".%s", oldImagePath)
+			// Convert to full path using upload dir
+			relativePath := strings.TrimPrefix(oldImagePath, "/uploads")
+			fullPath := filepath.Join(getUploadDir(), relativePath)
 			if err := os.Remove(fullPath); err != nil {
 				// Log error but don't fail the update
 				fmt.Printf("Failed to delete image file %s: %v\n", fullPath, err)
@@ -311,7 +310,7 @@ func UpdateProduct(c *gin.Context) {
 	if err == nil && multipartForm != nil {
 		formFiles := multipartForm.File["images"]
 		if len(formFiles) > 0 {
-			uploadDir := "./uploads/products"
+			uploadDir := filepath.Join(getUploadDir(), "products")
 			if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"message": "Failed to create upload directory: " + err.Error(),

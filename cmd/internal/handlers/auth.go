@@ -29,3 +29,20 @@ func Profile(c *gin.Context) {
 		},
 	})
 }
+
+func Logout(c *gin.Context) {
+	// Clear the authentication cookie
+	c.SetCookie(
+		"token",     // Name of the cookie
+		"",          // Empty value
+		-1,          // Negative MaxAge to expire immediately
+		"/",         // Path
+		"localhost", // Domain (change to your actual domain in production)
+		false,       // Secure
+		true,        // HttpOnly
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful",
+	})
+}
