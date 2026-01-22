@@ -434,11 +434,47 @@ func VehiclePaginate(c *gin.Context) {
 		return
 	}
 
+	// Get active boosts for all vehicles
+	var vehicleIDsForBoost []uint
+	for _, v := range vehicles {
+		vehicleIDsForBoost = append(vehicleIDsForBoost, v.ID)
+	}
+
+	var activeBoosts []models.Boost
+	if len(vehicleIDsForBoost) > 0 {
+		now := time.Now()
+		database.DB.Where("item_type = ? AND item_id IN ? AND status = ? AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
+			"vehicle", vehicleIDsForBoost, "active", now, now).Find(&activeBoosts)
+	}
+
+	// Create a map of vehicle ID to boost
+	boostMap := make(map[uint]*models.Boost)
+	for i := range activeBoosts {
+		boostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
+	}
+
+	// Build response with boost information
+	type VehicleWithBoost struct {
+		models.Vehicle
+		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
+		IsBoosted   bool           `json:"is_boosted"`
+	}
+
+	itemsWithBoost := make([]VehicleWithBoost, len(vehicles))
+	for i, v := range vehicles {
+		boost, hasBoost := boostMap[v.ID]
+		itemsWithBoost[i] = VehicleWithBoost{
+			Vehicle:     v,
+			ActiveBoost: boost,
+			IsBoosted:   hasBoost,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Vehicles retrieved successfully",
 		"vehicles": gin.H{
 			"total": total,
-			"items": vehicles,
+			"items": itemsWithBoost,
 		},
 	})
 }

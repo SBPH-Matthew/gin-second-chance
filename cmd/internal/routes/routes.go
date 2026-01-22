@@ -28,7 +28,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		// Serve static files for uploads under /api/uploads
 		api.Static("/uploads", getUploadDir())
-		
+
 		api.POST("/register", handlers.Register)
 		api.POST("/login", handlers.Login)
 		api.POST("/logout", handlers.Logout)
@@ -122,6 +122,16 @@ func RegisterRoutes(r *gin.Engine) {
 		notification.GET("/", middleware.AuthRequired(), handlers.GetNotifications)
 		notification.PUT("/:id/read", middleware.AuthRequired(), handlers.MarkNotificationAsRead)
 		notification.PUT("/read-all", middleware.AuthRequired(), handlers.MarkAllNotificationsAsRead)
+	}
+
+	boost := api.Group("/boost")
+	{
+		boost.GET("/pricing", handlers.GetBoostPricing)
+		boost.POST("/", middleware.AuthRequired(), handlers.CreateBoost)
+		boost.GET("/", middleware.AuthRequired(), handlers.GetUserBoosts)
+		boost.GET("/:id", middleware.AuthRequired(), handlers.GetBoost)
+		boost.PUT("/:id", middleware.AuthRequired(), handlers.UpdateBoost)
+		boost.PUT("/:id/cancel", middleware.AuthRequired(), handlers.CancelBoost)
 	}
 
 }

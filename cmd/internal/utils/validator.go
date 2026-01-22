@@ -81,7 +81,16 @@ func populateStructFromForm(c *gin.Context, target interface{}) error {
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
-		fieldName := strings.ToLower(fieldType.Name)
+		
+		// Get form tag, fallback to lowercase field name if no tag
+		formTag := fieldType.Tag.Get("form")
+		var fieldName string
+		if formTag != "" && formTag != "-" {
+			// Use form tag, but split on comma to get the first part (ignore options like "omitempty")
+			fieldName = strings.Split(formTag, ",")[0]
+		} else {
+			fieldName = strings.ToLower(fieldType.Name)
+		}
 
 		// Get form value
 		formValue := c.PostForm(fieldName)

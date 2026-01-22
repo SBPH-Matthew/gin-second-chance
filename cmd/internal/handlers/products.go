@@ -504,11 +504,47 @@ func ProductPaginate(c *gin.Context) {
 		}
 	}
 
+	// Get active boosts for all products
+	var productIDsForBoost []uint
+	for _, p := range products {
+		productIDsForBoost = append(productIDsForBoost, p.ID)
+	}
+
+	var activeBoosts []models.Boost
+	if len(productIDsForBoost) > 0 {
+		now := time.Now()
+		database.DB.Where("item_type = ? AND item_id IN ? AND status = ? AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
+			"product", productIDsForBoost, "active", now, now).Find(&activeBoosts)
+	}
+
+	// Create a map of product ID to boost
+	boostMap := make(map[uint]*models.Boost)
+	for i := range activeBoosts {
+		boostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
+	}
+
+	// Build response with boost information
+	type ProductWithBoost struct {
+		models.Product
+		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
+		IsBoosted   bool           `json:"is_boosted"`
+	}
+
+	itemsWithBoost := make([]ProductWithBoost, len(products))
+	for i, p := range products {
+		boost, hasBoost := boostMap[p.ID]
+		itemsWithBoost[i] = ProductWithBoost{
+			Product:     p,
+			ActiveBoost: boost,
+			IsBoosted:   hasBoost,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Products paginated successfully",
 		"products": gin.H{
 			"total": total,
-			"items": products,
+			"items": itemsWithBoost,
 		},
 	})
 }
@@ -615,11 +651,47 @@ func GetMyProductsPaginate(c *gin.Context) {
 		return
 	}
 
+	// Get active boosts for all products
+	var productIDsForBoost []uint
+	for _, p := range products {
+		productIDsForBoost = append(productIDsForBoost, p.ID)
+	}
+
+	var activeBoosts []models.Boost
+	if len(productIDsForBoost) > 0 {
+		now := time.Now()
+		database.DB.Where("item_type = ? AND item_id IN ? AND status = ? AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
+			"product", productIDsForBoost, "active", now, now).Find(&activeBoosts)
+	}
+
+	// Create a map of product ID to boost
+	boostMap := make(map[uint]*models.Boost)
+	for i := range activeBoosts {
+		boostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
+	}
+
+	// Build response with boost information
+	type ProductWithBoost struct {
+		models.Product
+		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
+		IsBoosted   bool           `json:"is_boosted"`
+	}
+
+	itemsWithBoost := make([]ProductWithBoost, len(products))
+	for i, p := range products {
+		boost, hasBoost := boostMap[p.ID]
+		itemsWithBoost[i] = ProductWithBoost{
+			Product:     p,
+			ActiveBoost: boost,
+			IsBoosted:   hasBoost,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "My products retrieved successfully",
 		"products": gin.H{
 			"total": total,
-			"items": products,
+			"items": itemsWithBoost,
 		},
 	})
 }

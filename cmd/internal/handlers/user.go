@@ -2,8 +2,13 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
@@ -59,18 +64,30 @@ func GetPaginateUser(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
+	// Parse multipart form for file upload
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil { // 32 MB max
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Failed to parse form data"})
+		return
+	}
+
 	type CreateUserRequest struct {
-		FirstName       string `json:"first_name" validate:"required"`
-		LastName        string `json:"last_name" validate:"required"`
-		Email           string `json:"email" validate:"required,email"`
-		Role            string `json:"role" validate:"required"`
-		Password        string `json:"password" validate:"required,min=8,max=100"`
-		ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=100,eqfield=Password"`
+		FirstName       string `form:"first_name" validate:"required"`
+		LastName        string `form:"last_name" validate:"required"`
+		Email           string `form:"email" validate:"required,email"`
+		Role            string `form:"role" validate:"required"`
+		Password        string `form:"password" validate:"required,min=8,max=100"`
+		ConfirmPassword string `form:"confirm_password" validate:"required,min=8,max=100,eqfield=Password"`
+		// Address fields
+		Country        string `form:"country"`
+		StateProvince  string `form:"state_province"`
+		StreetAddress1 string `form:"street_address_1"`
+		StreetAddress2 string `form:"street_address_2"`
+		ZipPostalCode  string `form:"zip_postal_code"`
 	}
 
 	var body CreateUserRequest
 
-	if err := utils.ValidateBodyJSON(c, &body); err != nil {
+	if err := utils.ValidateBodyFormData(c, &body); err != nil {
 		return
 	}
 
@@ -102,12 +119,57 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Handle profile picture upload
+	var profilePicturePath string
+	multipartForm, err := c.MultipartForm()
+	if err == nil && multipartForm != nil {
+		formFiles := multipartForm.File["profile_picture"]
+		if len(formFiles) > 0 {
+			file := formFiles[0]
+			src, err := file.Open()
+			if err == nil {
+				defer src.Close()
+
+				// Generate unique filename
+				ext := filepath.Ext(file.Filename)
+				// Remove duplicate extensions
+				baseName := strings.TrimSuffix(file.Filename, ext)
+				baseName = strings.TrimSuffix(baseName, ext)
+				filename := fmt.Sprintf("%s_%d%s", baseName, time.Now().UnixNano(), ext)
+
+				// Create uploads directory if it doesn't exist
+				uploadDir := getUploadDir()
+				profileDir := filepath.Join(uploadDir, "profiles")
+				if err := os.MkdirAll(profileDir, os.ModePerm); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"message": "Failed to create upload directory: " + err.Error(),
+					})
+					return
+				}
+
+				// Save file
+				dst, err := os.Create(filepath.Join(profileDir, filename))
+				if err == nil {
+					defer dst.Close()
+					io.Copy(dst, src)
+					profilePicturePath = fmt.Sprintf("/uploads/profiles/%s", filename)
+				}
+			}
+		}
+	}
+
 	user := models.User{
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		Email:     body.Email,
-		RoleID:    uint(roleID),
-		Password:  string(passwordHash),
+		FirstName:      body.FirstName,
+		LastName:       body.LastName,
+		Email:          body.Email,
+		RoleID:         uint(roleID),
+		Password:       string(passwordHash),
+		ProfilePicture: profilePicturePath,
+		Country:        body.Country,
+		StateProvince:  body.StateProvince,
+		StreetAddress1: body.StreetAddress1,
+		StreetAddress2: body.StreetAddress2,
+		ZipPostalCode:  body.ZipPostalCode,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -252,7 +314,36 @@ func Login(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
-	var body requests.UpdateUserDetailRequest
+	// Parse multipart form for file upload
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil { // 32 MB max
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Failed to parse form data"})
+		return
+	}
+
+	type UpdateUserRequest struct {
+		FirstName       string `form:"first_name" binding:"required"`
+		LastName        string `form:"last_name" binding:"required"`
+		Email           string `form:"email" binding:"required,email"`
+		Role            string `form:"role" binding:"required"`
+		// Address fields
+		Country        string `form:"country"`
+		StateProvince  string `form:"state_province"`
+		StreetAddress1 string `form:"street_address_1"`
+		StreetAddress2 string `form:"street_address_2"`
+		ZipPostalCode  string `form:"zip_postal_code"`
+		// Existing profile picture path (if not uploading new one)
+		ExistingProfilePicture string `form:"existing_profile_picture"`
+	}
+
+	var body UpdateUserRequest
+
+	if err := c.ShouldBind(&body); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request data",
+			"errors":  err.Error(),
+		})
+		return
+	}
 
 	id := c.Param("id")
 	idInt, err := strconv.Atoi(id)
@@ -260,10 +351,6 @@ func UpdateUser(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid user id",
 		})
-		return
-	}
-
-	if err := utils.ValidateBodyJSON(c, &body); err != nil {
 		return
 	}
 
@@ -296,12 +383,67 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Handle profile picture upload
+	profilePicturePath := body.ExistingProfilePicture
+	multipartForm, err := c.MultipartForm()
+	if err == nil && multipartForm != nil {
+		formFiles := multipartForm.File["profile_picture"]
+		if len(formFiles) > 0 {
+			// Delete old profile picture if exists
+			if user.ProfilePicture != "" {
+				relativePath := strings.TrimPrefix(user.ProfilePicture, "/uploads/")
+				fullPath := filepath.Join(getUploadDir(), relativePath)
+				if err := os.Remove(fullPath); err != nil {
+					// Log error but don't fail the update
+					fmt.Printf("Failed to delete profile picture file %s: %v\n", fullPath, err)
+				}
+			}
+
+			file := formFiles[0]
+			src, err := file.Open()
+			if err == nil {
+				defer src.Close()
+
+				// Generate unique filename
+				ext := filepath.Ext(file.Filename)
+				// Remove duplicate extensions
+				baseName := strings.TrimSuffix(file.Filename, ext)
+				baseName = strings.TrimSuffix(baseName, ext)
+				filename := fmt.Sprintf("%s_%d%s", baseName, time.Now().UnixNano(), ext)
+
+				// Create uploads directory if it doesn't exist
+				uploadDir := getUploadDir()
+				profileDir := filepath.Join(uploadDir, "profiles")
+				if err := os.MkdirAll(profileDir, os.ModePerm); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"message": "Failed to create upload directory: " + err.Error(),
+					})
+					return
+				}
+
+				// Save file
+				dst, err := os.Create(filepath.Join(profileDir, filename))
+				if err == nil {
+					defer dst.Close()
+					io.Copy(dst, src)
+					profilePicturePath = fmt.Sprintf("/uploads/profiles/%s", filename)
+				}
+			}
+		}
+	}
+
 	updateUser := models.User{
-		ID:        uint(idInt),
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		Email:     body.Email,
-		RoleID:    uint(roleID),
+		ID:             uint(idInt),
+		FirstName:      body.FirstName,
+		LastName:       body.LastName,
+		Email:          body.Email,
+		RoleID:         uint(roleID),
+		ProfilePicture: profilePicturePath,
+		Country:        body.Country,
+		StateProvince:  body.StateProvince,
+		StreetAddress1: body.StreetAddress1,
+		StreetAddress2: body.StreetAddress2,
+		ZipPostalCode:  body.ZipPostalCode,
 	}
 
 	if err := database.DB.Model(&updateUser).Updates(updateUser).Error; err != nil {

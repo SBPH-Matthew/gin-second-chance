@@ -7,11 +7,19 @@ import (
 
 type User struct {
 	gorm.Model
-	ID        uint   `gorm:"primaryKey;autoIncrement" json:"id"`
-	FirstName string `gorm:"not null" json:"first_name"`
-	LastName  string `gorm:"not null" json:"last_name"`
-	Email     string `gorm:"unique; not null" json:"email"`
-	Password  string `gorm:"not null" json:"-"`
+	ID             uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	FirstName      string `gorm:"not null" json:"first_name"`
+	LastName       string `gorm:"not null" json:"last_name"`
+	Email          string `gorm:"unique; not null" json:"email"`
+	Password       string `gorm:"not null" json:"-"`
+	ProfilePicture string `json:"profile_picture"`
+
+	// Address fields
+	Country        string `json:"country"`
+	StateProvince  string `json:"state_province"`
+	StreetAddress1 string `json:"street_address_1"`
+	StreetAddress2 string `json:"street_address_2"`
+	ZipPostalCode  string `json:"zip_postal_code"`
 
 	RoleID uint `json:"role_id"`
 	Role   Role `json:"role"`
