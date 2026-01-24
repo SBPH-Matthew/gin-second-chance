@@ -12,7 +12,7 @@ func Profile(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
+	if err := database.DB.Preload("Role").First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"message": "user not found",
 		})
@@ -21,13 +21,7 @@ func Profile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Authenticated request",
-		"user": gin.H{
-			"id":             user.ID,
-			"first_name":     user.FirstName,
-			"last_name":      user.LastName,
-			"email":          user.Email,
-			"profile_picture": user.ProfilePicture,
-		},
+		"user":    user,
 	})
 }
 
