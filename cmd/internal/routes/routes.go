@@ -134,4 +134,23 @@ func RegisterRoutes(r *gin.Engine) {
 		boost.PUT("/:id/cancel", middleware.AuthRequired(), handlers.CancelBoost)
 	}
 
+	messages := api.Group("/message")
+	{
+		messages.GET("/all", middleware.AuthRequired(), handlers.GetAllConversations)
+		messages.GET("/conversations", middleware.AuthRequired(), handlers.GetConversations)
+		messages.GET("/conversation/:id", middleware.AuthRequired(), handlers.GetMessages)
+		messages.POST("/send", middleware.AuthRequired(), handlers.SendMessage)
+	}
+
+	reviews := api.Group("/review")
+	{
+		reviews.GET("/user/:id", handlers.GetUserReviews)
+		reviews.POST("/", middleware.AuthRequired(), handlers.CreateReview)
+	}
+
+	identity := api.Group("/identity")
+	{
+		identity.POST("/verify", middleware.AuthRequired(), handlers.VerifyIdentity)
+		identity.PUT("/phone", middleware.AuthRequired(), handlers.UpdatePhone)
+	}
 }

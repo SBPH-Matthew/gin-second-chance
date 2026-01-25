@@ -58,6 +58,9 @@ func runMigrate() {
 		&models.Vehicle{},
 		&models.Boost{},
 		&models.Payment{},
+		&models.Review{},
+		&models.Conversation{},
+		&models.Message{},
 	)
 
 	if err != nil {

@@ -78,11 +78,13 @@ func CreateUser(c *gin.Context) {
 		Password        string `form:"password" validate:"required,min=8,max=100"`
 		ConfirmPassword string `form:"confirm_password" validate:"required,min=8,max=100,eqfield=Password"`
 		// Address fields
-		Country        string `form:"country"`
-		StateProvince  string `form:"state_province"`
-		StreetAddress1 string `form:"street_address_1"`
-		StreetAddress2 string `form:"street_address_2"`
-		ZipPostalCode  string `form:"zip_postal_code"`
+		Country        string  `form:"country"`
+		StateProvince  string  `form:"state_province"`
+		StreetAddress1 string  `form:"street_address_1"`
+		StreetAddress2 string  `form:"street_address_2"`
+		ZipPostalCode  string  `form:"zip_postal_code"`
+		Rating         float64 `form:"rating"`
+		TotalReviews   int     `form:"total_reviews"`
 	}
 
 	var body CreateUserRequest
@@ -170,6 +172,8 @@ func CreateUser(c *gin.Context) {
 		StreetAddress1: body.StreetAddress1,
 		StreetAddress2: body.StreetAddress2,
 		ZipPostalCode:  body.ZipPostalCode,
+		Rating:         body.Rating,
+		TotalReviews:   body.TotalReviews,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -321,16 +325,19 @@ func UpdateUser(c *gin.Context) {
 	}
 
 	type UpdateUserRequest struct {
-		FirstName       string `form:"first_name" binding:"required"`
-		LastName        string `form:"last_name" binding:"required"`
-		Email           string `form:"email" binding:"required,email"`
-		Role            string `form:"role" binding:"required"`
+		FirstName string `form:"first_name" binding:"required"`
+		LastName  string `form:"last_name" binding:"required"`
+		Email     string `form:"email" binding:"required,email"`
+		Role      string `form:"role" binding:"required"`
 		// Address fields
-		Country        string `form:"country"`
-		StateProvince  string `form:"state_province"`
-		StreetAddress1 string `form:"street_address_1"`
-		StreetAddress2 string `form:"street_address_2"`
-		ZipPostalCode  string `form:"zip_postal_code"`
+		Country        string  `form:"country"`
+		StateProvince  string  `form:"state_province"`
+		StreetAddress1 string  `form:"street_address_1"`
+		StreetAddress2 string  `form:"street_address_2"`
+		ZipPostalCode  string  `form:"zip_postal_code"`
+		Bio            string  `form:"bio"`
+		Rating         float64 `form:"rating"`
+		TotalReviews   int     `form:"total_reviews"`
 		// Existing profile picture path (if not uploading new one)
 		ExistingProfilePicture string `form:"existing_profile_picture"`
 	}
@@ -444,6 +451,9 @@ func UpdateUser(c *gin.Context) {
 		StreetAddress1: body.StreetAddress1,
 		StreetAddress2: body.StreetAddress2,
 		ZipPostalCode:  body.ZipPostalCode,
+		Bio:            body.Bio,
+		Rating:         body.Rating,
+		TotalReviews:   body.TotalReviews,
 	}
 
 	if err := database.DB.Model(&updateUser).Updates(updateUser).Error; err != nil {

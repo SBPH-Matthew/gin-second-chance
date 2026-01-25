@@ -23,6 +23,13 @@ type User struct {
 
 	RoleID uint `json:"role_id"`
 	Role   Role `json:"role"`
+
+	// New fields for verification and contact
+	Phone            string  `json:"phone"`
+	Bio              string  `gorm:"type:text" json:"bio"`
+	IdentityVerified bool    `gorm:"default:false" json:"identity_verified"`
+	Rating           float64 `gorm:"default:0" json:"rating"`
+	TotalReviews     int     `gorm:"default:0" json:"total_reviews"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
