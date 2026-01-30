@@ -38,6 +38,7 @@ func RegisterRoutes(r *gin.Engine) {
 	user := api.Group("/user")
 	{
 		user.GET("/", middleware.AuthRequired(), handlers.GetPaginateUser)
+		user.GET("/:id", middleware.AuthRequired(), handlers.GetUserByID)
 		user.POST("/", middleware.AuthRequired(), handlers.CreateUser)
 		user.PUT("/:id", middleware.AuthRequired(), handlers.UpdateUser)
 		user.PUT("/:id/password", middleware.AuthRequired(), handlers.ChangeUserPassword)

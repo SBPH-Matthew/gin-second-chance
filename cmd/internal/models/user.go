@@ -28,6 +28,7 @@ type User struct {
 	Phone            string  `json:"phone"`
 	Bio              string  `gorm:"type:text" json:"bio"`
 	IdentityVerified bool    `gorm:"default:false" json:"identity_verified"`
+	IDDocument       string  `json:"id_document"` // Path to uploaded ID document
 	Rating           float64 `gorm:"default:0" json:"rating"`
 	TotalReviews     int     `gorm:"default:0" json:"total_reviews"`
 }

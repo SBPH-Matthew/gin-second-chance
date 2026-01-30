@@ -19,6 +19,7 @@ func main() {
 
 	seeders.SeedCategoryStatus()
 	seeders.SeedCategoryGroup()
+	seeders.SeedCategory()
 	seeders.SeedProductStatus()
 	seeders.SeedProductCondition()
 	seeders.SeedRegions()

@@ -9,7 +9,7 @@ import (
 
 func SeedCategoryGroup() {
 
-	category_group := []string{"Home & Garden", "Entertainment", "Clothing & Accessories", "Family", "Electronics", "Hobbies", "Classifieds", "Vehicles", "Others"}
+	category_group := []string{"Home & Garden", "Entertainment", "Clothing & Accessories", "Family", "Electronics", "Hobbies", "Vehicles", "Classifieds", "Others"}
 
 	for _, name := range category_group {
 		database.DB.FirstOrCreate(

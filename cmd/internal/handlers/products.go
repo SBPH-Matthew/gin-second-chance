@@ -527,7 +527,7 @@ func ProductPaginate(c *gin.Context) {
 	type ProductWithBoost struct {
 		models.Product
 		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
-		IsBoosted   bool           `json:"is_boosted"`
+		IsBoosted   bool          `json:"is_boosted"`
 	}
 
 	itemsWithBoost := make([]ProductWithBoost, len(products))
@@ -631,64 +631,144 @@ func GetMyProductsPaginate(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
+	// Fetch products
 	var products []models.Product
-	var total int64
-
-	query := database.DB.Model(&models.Product{}).Where("seller_id = ?", userID)
-
-	// Get total count for this user
-	if err := query.Count(&total).Error; err != nil {
+	var productTotal int64
+	productQuery := database.DB.Model(&models.Product{}).Where("seller_id = ?", userID)
+	if err := productQuery.Count(&productTotal).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+	if err := productQuery.Preload("Status").Preload("ProductCondition").Preload("Category").Limit(limit).Offset(offset).Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
 
-	if err := query.Preload("Status").Preload("ProductCondition").Preload("Category").Limit(limit).Offset(offset).Find(&products).Error; err != nil {
+	// Fetch vehicles
+	var vehicles []models.Vehicle
+	var vehicleTotal int64
+	vehicleQuery := database.DB.Model(&models.Vehicle{}).Where("seller_id = ?", userID)
+	if err := vehicleQuery.Count(&vehicleTotal).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Database error: " + err.Error(),
+		})
+		return
+	}
+	if err := vehicleQuery.Preload("VehicleType").Limit(limit).Offset(offset).Find(&vehicles).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Database error: " + err.Error(),
 		})
 		return
 	}
 
-	// Get active boosts for all products
+	// Get active boosts for products
 	var productIDsForBoost []uint
 	for _, p := range products {
 		productIDsForBoost = append(productIDsForBoost, p.ID)
 	}
+	var vehicleIDsForBoost []uint
+	for _, v := range vehicles {
+		vehicleIDsForBoost = append(vehicleIDsForBoost, v.ID)
+	}
 
 	var activeBoosts []models.Boost
+	now := time.Now()
 	if len(productIDsForBoost) > 0 {
-		now := time.Now()
 		database.DB.Where("item_type = ? AND item_id IN ? AND status = ? AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
 			"product", productIDsForBoost, "active", now, now).Find(&activeBoosts)
 	}
+	if len(vehicleIDsForBoost) > 0 {
+		var vehicleBoosts []models.Boost
+		database.DB.Where("item_type = ? AND item_id IN ? AND status = ? AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
+			"vehicle", vehicleIDsForBoost, "active", now, now).Find(&vehicleBoosts)
+		activeBoosts = append(activeBoosts, vehicleBoosts...)
+	}
 
-	// Create a map of product ID to boost
-	boostMap := make(map[uint]*models.Boost)
+	// Create boost maps
+	productBoostMap := make(map[uint]*models.Boost)
+	vehicleBoostMap := make(map[uint]*models.Boost)
 	for i := range activeBoosts {
-		boostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
-	}
-
-	// Build response with boost information
-	type ProductWithBoost struct {
-		models.Product
-		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
-		IsBoosted   bool           `json:"is_boosted"`
-	}
-
-	itemsWithBoost := make([]ProductWithBoost, len(products))
-	for i, p := range products {
-		boost, hasBoost := boostMap[p.ID]
-		itemsWithBoost[i] = ProductWithBoost{
-			Product:     p,
-			ActiveBoost: boost,
-			IsBoosted:   hasBoost,
+		if activeBoosts[i].ItemType == "product" {
+			productBoostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
+		} else if activeBoosts[i].ItemType == "vehicle" {
+			vehicleBoostMap[activeBoosts[i].ItemID] = &activeBoosts[i]
 		}
 	}
 
+	// Build response with boost information for products
+	type ProductWithBoost struct {
+		models.Product
+		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
+		IsBoosted   bool          `json:"is_boosted"`
+		ItemType    string        `json:"item_type"`
+	}
+
+	// Build response for vehicles (convert to product-like structure)
+	type VehicleAsProduct struct {
+		ID               uint                     `json:"id"`
+		Name             string                   `json:"name"`
+		Description      string                   `json:"description"`
+		Price            float64                  `json:"price"`
+		Location         string                   `json:"location"`
+		Images           models.StringArray       `json:"images"`
+		Category         *models.Category         `json:"category,omitempty"`
+		Status           *models.ProductStatus    `json:"status,omitempty"`
+		ProductCondition *models.ProductCondition `json:"product_condition,omitempty"`
+		CreatedAt        time.Time                `json:"CreatedAt"`
+		UpdatedAt        time.Time                `json:"UpdatedAt"`
+		ActiveBoost      *models.Boost            `json:"active_boost,omitempty"`
+		IsBoosted        bool                     `json:"is_boosted"`
+		ItemType         string                   `json:"item_type"`
+		VehicleType      *models.VehicleType      `json:"vehicle_type,omitempty"`
+		VehicleMake      string                   `json:"vehicle_make,omitempty"`
+		VehicleModel     string                   `json:"vehicle_model,omitempty"`
+		Year             uint                     `json:"year,omitempty"`
+	}
+
+	itemsWithBoost := make([]interface{}, 0, len(products)+len(vehicles))
+
+	// Add products
+	for _, p := range products {
+		boost, hasBoost := productBoostMap[p.ID]
+		itemsWithBoost = append(itemsWithBoost, ProductWithBoost{
+			Product:     p,
+			ActiveBoost: boost,
+			IsBoosted:   hasBoost,
+			ItemType:    "product",
+		})
+	}
+
+	// Add vehicles (convert to product-like structure)
+	for _, v := range vehicles {
+		boost, hasBoost := vehicleBoostMap[v.ID]
+		vehicleName := fmt.Sprintf("%s %s %d", v.VehicleMake, v.VehicleModel, v.Year)
+		itemsWithBoost = append(itemsWithBoost, VehicleAsProduct{
+			ID:           v.ID,
+			Name:         vehicleName,
+			Description:  v.Description,
+			Price:        float64(v.Price),
+			Location:     v.Location,
+			Images:       v.Images,
+			CreatedAt:    v.CreatedAt,
+			UpdatedAt:    v.UpdatedAt,
+			ActiveBoost:  boost,
+			IsBoosted:    hasBoost,
+			ItemType:     "vehicle",
+			VehicleType:  &v.VehicleType,
+			VehicleMake:  v.VehicleMake,
+			VehicleModel: v.VehicleModel,
+			Year:         v.Year,
+		})
+	}
+
+	total := productTotal + vehicleTotal
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "My products retrieved successfully",
+		"message": "My listings retrieved successfully",
 		"products": gin.H{
 			"total": total,
 			"items": itemsWithBoost,
