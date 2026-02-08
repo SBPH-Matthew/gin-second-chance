@@ -22,6 +22,13 @@ func GetConversations(c *gin.Context) {
 		return
 	}
 
+	baseURL := utils.GetBaseURL(c)
+	for i := range conversations {
+		if conversations[i].Product.ID != 0 {
+			conversations[i].Product.Images = utils.FormatImageURLs(conversations[i].Product.Images, baseURL)
+		}
+	}
+
 	c.JSON(http.StatusOK, conversations)
 }
 
@@ -100,6 +107,13 @@ func GetAllConversations(c *gin.Context) {
 		Find(&conversations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to fetch conversations"})
 		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	for i := range conversations {
+		if conversations[i].Product.ID != 0 {
+			conversations[i].Product.Images = utils.FormatImageURLs(conversations[i].Product.Images, baseURL)
+		}
 	}
 
 	c.JSON(http.StatusOK, conversations)

@@ -54,6 +54,12 @@ func GetPaginateUser(c *gin.Context) {
 		return
 	}
 
+	baseURL := utils.GetBaseURL(c)
+	for i := range users {
+		users[i].ProfilePicture = utils.FormatImageURL(users[i].ProfilePicture, baseURL)
+		users[i].IDDocument = utils.FormatImageURL(users[i].IDDocument, baseURL)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User retrieved successfully",
 		"users": gin.H{
@@ -80,6 +86,10 @@ func GetUserByID(c *gin.Context) {
 		})
 		return
 	}
+
+	baseURL := utils.GetBaseURL(c)
+	user.ProfilePicture = utils.FormatImageURL(user.ProfilePicture, baseURL)
+	user.IDDocument = utils.FormatImageURL(user.IDDocument, baseURL)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User retrieved successfully",
@@ -689,5 +699,63 @@ func DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User deleted successfully",
 	})
+}
 
+func GetPublicProfile(c *gin.Context) {
+	idStr := c.Param("id")
+	idInt, err := strconv.Atoi(idStr)
+	if err != nil || idInt < 1 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid user id"})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Preload("Role").First(&user, idInt).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	user.ProfilePicture = utils.FormatImageURL(user.ProfilePicture, baseURL)
+	// Hide sensitive info for public view
+	user.Email = ""
+	user.Phone = ""
+	user.IDDocument = ""
+	user.StreetAddress1 = ""
+	user.StreetAddress2 = ""
+	user.ZipPostalCode = ""
+
+	// Fetch products
+	var products []models.Product
+	database.DB.Where("seller_id = ? AND status_id IN (select id from product_statuses where name = 'ACTIVE')", idInt).Find(&products)
+	for i := range products {
+		products[i].Images = utils.FormatImageURLs(products[i].Images, baseURL)
+	}
+
+	// Fetch vehicles
+	var vehicles []models.Vehicle
+	database.DB.Preload("VehicleType").Where("seller_id = ?", idInt).Find(&vehicles)
+	for i := range vehicles {
+		vehicles[i].Images = utils.FormatImageURLs(vehicles[i].Images, baseURL)
+	}
+
+	// Fetch reviews
+	var reviews []models.Review
+	database.DB.Preload("Reviewer").Where("target_user_id = ?", idInt).Order("created_at desc").Find(&reviews)
+	for i := range reviews {
+		reviews[i].Reviewer.ProfilePicture = utils.FormatImageURL(reviews[i].Reviewer.ProfilePicture, baseURL)
+		reviews[i].Reviewer.Email = ""
+		reviews[i].Reviewer.Phone = ""
+		reviews[i].Reviewer.IDDocument = ""
+		reviews[i].Reviewer.StreetAddress1 = ""
+		reviews[i].Reviewer.StreetAddress2 = ""
+		reviews[i].Reviewer.ZipPostalCode = ""
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user":     user,
+		"products": products,
+		"vehicles": vehicles,
+		"reviews":  reviews,
+	})
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/services"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -141,15 +142,15 @@ func CreateVehicle(c *gin.Context) {
 
 	vehicleTypeIDUint := uint(vehicleTypeID)
 	vehicle := models.Vehicle{
-		VehicleMake:  vehicleMake,
-		VehicleModel: vehicleModel,
-		Year:         uint(year),
-		Price:        uint(price),
-		Description:  description,
-		Location:     location,
-		Images:       imagePaths,
+		VehicleMake:   vehicleMake,
+		VehicleModel:  vehicleModel,
+		Year:          uint(year),
+		Price:         uint(price),
+		Description:   description,
+		Location:      location,
+		Images:        imagePaths,
 		VehicleTypeID: &vehicleTypeIDUint,
-		SellerID:     user.ID,
+		SellerID:      user.ID,
 	}
 
 	if err := database.DB.Create(&vehicle).Error; err != nil {
@@ -457,14 +458,17 @@ func VehiclePaginate(c *gin.Context) {
 	type VehicleWithBoost struct {
 		models.Vehicle
 		ActiveBoost *models.Boost `json:"active_boost,omitempty"`
-		IsBoosted   bool           `json:"is_boosted"`
+		IsBoosted   bool          `json:"is_boosted"`
 	}
 
+	baseURL := utils.GetBaseURL(c)
 	itemsWithBoost := make([]VehicleWithBoost, len(vehicles))
 	for i, v := range vehicles {
 		boost, hasBoost := boostMap[v.ID]
+		vCopy := v
+		vCopy.Images = utils.FormatImageURLs(v.Images, baseURL)
 		itemsWithBoost[i] = VehicleWithBoost{
-			Vehicle:     v,
+			Vehicle:     vCopy,
 			ActiveBoost: boost,
 			IsBoosted:   hasBoost,
 		}

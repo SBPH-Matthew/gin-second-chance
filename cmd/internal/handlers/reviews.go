@@ -67,5 +67,10 @@ func GetUserReviews(c *gin.Context) {
 		return
 	}
 
+	baseURL := utils.GetBaseURL(c)
+	for i := range reviews {
+		reviews[i].Reviewer.ProfilePicture = utils.FormatImageURL(reviews[i].Reviewer.ProfilePicture, baseURL)
+	}
+
 	c.JSON(http.StatusOK, reviews)
 }

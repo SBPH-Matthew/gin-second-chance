@@ -11,6 +11,7 @@ import (
 
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/database"
 	"github.com/SBPH-Matthew/second-chance/cmd/internal/models"
+	"github.com/SBPH-Matthew/second-chance/cmd/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -125,8 +126,10 @@ func VerifyIdentity(c *gin.Context) {
 		return
 	}
 
+	baseURL := utils.GetBaseURL(c)
 	c.JSON(http.StatusOK, gin.H{
-		"message": "ID document uploaded successfully. Your verification is under review.",
+		"message":     "ID document uploaded successfully. Your verification is under review.",
+		"id_document": utils.FormatImageURL(idDocumentPath, baseURL),
 	})
 }
 

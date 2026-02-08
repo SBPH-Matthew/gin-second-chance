@@ -39,6 +39,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		user.GET("/", middleware.AuthRequired(), handlers.GetPaginateUser)
 		user.GET("/:id", middleware.AuthRequired(), handlers.GetUserByID)
+		user.GET("/:id/public", handlers.GetPublicProfile)
 		user.POST("/", middleware.AuthRequired(), handlers.CreateUser)
 		user.PUT("/:id", middleware.AuthRequired(), handlers.UpdateUser)
 		user.PUT("/:id/password", middleware.AuthRequired(), handlers.ChangeUserPassword)
@@ -57,6 +58,7 @@ func RegisterRoutes(r *gin.Engine) {
 		product.PUT("/:id", middleware.AuthRequired(), handlers.UpdateProduct)
 		product.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteProduct)
 
+		product.GET("/:id", handlers.ProductDetails)
 		product.GET("/self", middleware.AuthRequired(), handlers.GetMyProductsPaginate)
 	}
 
@@ -154,4 +156,6 @@ func RegisterRoutes(r *gin.Engine) {
 		identity.POST("/verify", middleware.AuthRequired(), handlers.VerifyIdentity)
 		identity.PUT("/phone", middleware.AuthRequired(), handlers.UpdatePhone)
 	}
+
+	api.GET("/listings", handlers.GetAllListings)
 }
