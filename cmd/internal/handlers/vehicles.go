@@ -523,3 +523,70 @@ func DeleteVehicle(c *gin.Context) {
 		"message": "Vehicle deleted successfully",
 	})
 }
+func VehicleDetails(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid vehicle ID"})
+		return
+	}
+
+	var vehicle models.Vehicle
+	if err := database.DB.Preload("VehicleType").Preload("Seller").First(&vehicle, idInt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Vehicle not found"})
+		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	vehicle.Images = utils.FormatImageURLs(vehicle.Images, baseURL)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Vehicle details retrieved successfully",
+		"vehicle": vehicle,
+	})
+}
+func GetMyVehiclesPaginate(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	userID := c.GetUint("user_id")
+	offset := (page - 1) * limit
+
+	var vehicles []models.Vehicle
+	var total int64
+
+	query := database.DB.Model(&models.Vehicle{}).Where("seller_id = ?", userID)
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	if err := query.Preload("VehicleType").Preload("Seller").
+		Limit(limit).Offset(offset).Order("id desc").Find(&vehicles).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	for i := range vehicles {
+		vehicles[i].Images = utils.FormatImageURLs(vehicles[i].Images, baseURL)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "My vehicles retrieved successfully",
+		"vehicles": gin.H{
+			"total": total,
+			"items": vehicles,
+		},
+	})
+}

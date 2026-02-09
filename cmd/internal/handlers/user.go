@@ -728,15 +728,39 @@ func GetPublicProfile(c *gin.Context) {
 	// Fetch products
 	var products []models.Product
 	database.DB.Where("seller_id = ? AND status_id IN (select id from product_statuses where name = 'ACTIVE')", idInt).Find(&products)
+
+	type ProductWithMetadata struct {
+		models.Product
+		ItemType string `json:"item_type"`
+	}
+
+	productsWithMetadata := make([]ProductWithMetadata, len(products))
 	for i := range products {
 		products[i].Images = utils.FormatImageURLs(products[i].Images, baseURL)
+		productsWithMetadata[i] = ProductWithMetadata{
+			Product:  products[i],
+			ItemType: "product",
+		}
 	}
 
 	// Fetch vehicles
 	var vehicles []models.Vehicle
 	database.DB.Preload("VehicleType").Where("seller_id = ?", idInt).Find(&vehicles)
+
+	type VehicleWithMetadata struct {
+		models.Vehicle
+		ItemType string `json:"item_type"`
+		Name     string `json:"name"`
+	}
+
+	vehiclesWithMetadata := make([]VehicleWithMetadata, len(vehicles))
 	for i := range vehicles {
 		vehicles[i].Images = utils.FormatImageURLs(vehicles[i].Images, baseURL)
+		vehiclesWithMetadata[i] = VehicleWithMetadata{
+			Vehicle:  vehicles[i],
+			ItemType: "vehicle",
+			Name:     fmt.Sprintf("%s %s %d", vehicles[i].VehicleMake, vehicles[i].VehicleModel, vehicles[i].Year),
+		}
 	}
 
 	// Fetch reviews
@@ -754,8 +778,8 @@ func GetPublicProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":     user,
-		"products": products,
-		"vehicles": vehicles,
+		"products": productsWithMetadata,
+		"vehicles": vehiclesWithMetadata,
 		"reviews":  reviews,
 	})
 }

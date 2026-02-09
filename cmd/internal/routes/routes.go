@@ -110,6 +110,8 @@ func RegisterRoutes(r *gin.Engine) {
 		vehicle.POST("/", middleware.AuthRequired(), handlers.CreateVehicle)
 		vehicle.PUT("/:id", middleware.AuthRequired(), handlers.UpdateVehicle)
 		vehicle.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteVehicle)
+		vehicle.GET("/:id", handlers.VehicleDetails)
+		vehicle.GET("/self", middleware.AuthRequired(), handlers.GetMyVehiclesPaginate)
 	}
 
 	vehicleType := api.Group("/vehicle-type")
@@ -158,4 +160,6 @@ func RegisterRoutes(r *gin.Engine) {
 	}
 
 	api.GET("/listings", handlers.GetAllListings)
+	api.GET("/listings/:id", handlers.ListingDetails)
+	api.GET("/listings/self", middleware.AuthRequired(), handlers.GetMyListings)
 }

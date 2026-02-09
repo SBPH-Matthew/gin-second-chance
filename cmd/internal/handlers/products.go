@@ -597,68 +597,146 @@ func DeleteProduct(c *gin.Context) {
 	})
 }
 
-func ProductDetails(c *gin.Context) {
+func ListingDetails(c *gin.Context) {
 	id := c.Param("id")
+	itemType := c.Query("type")
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
 		return
 	}
 
-	// Try product first
-	var product models.Product
-	if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").Preload("Seller").First(&product, idInt).Error; err == nil {
-		baseURL := utils.GetBaseURL(c)
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Product details retrieved successfully",
-			"item": gin.H{
-				"id":                product.ID,
-				"name":              product.Name,
-				"description":       product.Description,
-				"price":             product.Price,
-				"location":          product.Location,
-				"images":            utils.FormatImageURLs(product.Images, baseURL),
-				"item_type":         "product",
-				"status":            product.Status,
-				"product_condition": product.ProductCondition,
-				"category":          product.Category,
-				"seller":            product.Seller,
-				"CreatedAt":         product.CreatedAt,
-			},
-		})
-		return
+	// If type is explicitly provided, try that first
+	if itemType == "product" {
+		var product models.Product
+		if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").Preload("Seller").First(&product, idInt).Error; err == nil {
+			baseURL := utils.GetBaseURL(c)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Product details retrieved successfully",
+				"item": gin.H{
+					"id":                product.ID,
+					"name":              product.Name,
+					"description":       product.Description,
+					"price":             product.Price,
+					"location":          product.Location,
+					"images":            utils.FormatImageURLs(product.Images, baseURL),
+					"item_type":         "product",
+					"status":            product.Status,
+					"product_condition": product.ProductCondition,
+					"category":          product.Category,
+					"seller":            product.Seller,
+					"CreatedAt":         product.CreatedAt,
+				},
+			})
+			return
+		}
+	} else if itemType == "vehicle" {
+		var vehicle models.Vehicle
+		if err := database.DB.Preload("VehicleType").Preload("Seller").First(&vehicle, idInt).Error; err == nil {
+			baseURL := utils.GetBaseURL(c)
+			vehicleName := fmt.Sprintf("%s %s %d", vehicle.VehicleMake, vehicle.VehicleModel, vehicle.Year)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Vehicle details retrieved successfully",
+				"item": gin.H{
+					"id":            vehicle.ID,
+					"name":          vehicleName,
+					"description":   vehicle.Description,
+					"price":         float64(vehicle.Price),
+					"location":      vehicle.Location,
+					"images":        utils.FormatImageURLs(vehicle.Images, baseURL),
+					"item_type":     "vehicle",
+					"vehicle_type":  vehicle.VehicleType,
+					"vehicle_make":  vehicle.VehicleMake,
+					"vehicle_model": vehicle.VehicleModel,
+					"year":          vehicle.Year,
+					"seller":        vehicle.Seller,
+					"CreatedAt":     vehicle.CreatedAt,
+				},
+			})
+			return
+		}
 	}
 
-	// Try vehicle
-	var vehicle models.Vehicle
-	if err := database.DB.Preload("VehicleType").Preload("Seller").First(&vehicle, idInt).Error; err == nil {
-		baseURL := utils.GetBaseURL(c)
-		vehicleName := fmt.Sprintf("%s %s %d", vehicle.VehicleMake, vehicle.VehicleModel, vehicle.Year)
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Vehicle details retrieved successfully",
-			"item": gin.H{
-				"id":            vehicle.ID,
-				"name":          vehicleName,
-				"description":   vehicle.Description,
-				"price":         float64(vehicle.Price),
-				"location":      vehicle.Location,
-				"images":        utils.FormatImageURLs(vehicle.Images, baseURL),
-				"item_type":     "vehicle",
-				"vehicle_type":  vehicle.VehicleType,
-				"vehicle_make":  vehicle.VehicleMake,
-				"vehicle_model": vehicle.VehicleModel,
-				"year":          vehicle.Year,
-				"seller":        vehicle.Seller,
-				"CreatedAt":     vehicle.CreatedAt,
-			},
-		})
-		return
+	// Fallback/Legacy behavior: Try product first, then vehicle
+	if itemType == "" {
+		// Try product first
+		var product models.Product
+		if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").Preload("Seller").First(&product, idInt).Error; err == nil {
+			baseURL := utils.GetBaseURL(c)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Product details retrieved successfully",
+				"item": gin.H{
+					"id":                product.ID,
+					"name":              product.Name,
+					"description":       product.Description,
+					"price":             product.Price,
+					"location":          product.Location,
+					"images":            utils.FormatImageURLs(product.Images, baseURL),
+					"item_type":         "product",
+					"status":            product.Status,
+					"product_condition": product.ProductCondition,
+					"category":          product.Category,
+					"seller":            product.Seller,
+					"CreatedAt":         product.CreatedAt,
+				},
+			})
+			return
+		}
+
+		// Try vehicle
+		var vehicle models.Vehicle
+		if err := database.DB.Preload("VehicleType").Preload("Seller").First(&vehicle, idInt).Error; err == nil {
+			baseURL := utils.GetBaseURL(c)
+			vehicleName := fmt.Sprintf("%s %s %d", vehicle.VehicleMake, vehicle.VehicleModel, vehicle.Year)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Vehicle details retrieved successfully",
+				"item": gin.H{
+					"id":            vehicle.ID,
+					"name":          vehicleName,
+					"description":   vehicle.Description,
+					"price":         float64(vehicle.Price),
+					"location":      vehicle.Location,
+					"images":        utils.FormatImageURLs(vehicle.Images, baseURL),
+					"item_type":     "vehicle",
+					"vehicle_type":  vehicle.VehicleType,
+					"vehicle_make":  vehicle.VehicleMake,
+					"vehicle_model": vehicle.VehicleModel,
+					"year":          vehicle.Year,
+					"seller":        vehicle.Seller,
+					"CreatedAt":     vehicle.CreatedAt,
+				},
+			})
+			return
+		}
 	}
 
 	c.JSON(http.StatusNotFound, gin.H{"message": "Listing not found"})
 }
 
-func GetMyProductsPaginate(c *gin.Context) {
+func ProductDetails(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid product ID"})
+		return
+	}
+
+	var product models.Product
+	if err := database.DB.Preload("Status").Preload("ProductCondition").Preload("Category").Preload("Seller").First(&product, idInt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Product not found"})
+		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	product.Images = utils.FormatImageURLs(product.Images, baseURL)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Product details retrieved successfully",
+		"product": product,
+	})
+}
+
+func GetMyListings(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 
@@ -824,10 +902,61 @@ func GetMyProductsPaginate(c *gin.Context) {
 	})
 }
 
+func GetMyProductsPaginate(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	userID := c.GetUint("user_id")
+	offset := (page - 1) * limit
+
+	var products []models.Product
+	var total int64
+
+	query := database.DB.Model(&models.Product{}).Where("seller_id = ?", userID)
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	if err := query.Preload("Status").Preload("ProductCondition").Preload("Category").
+		Limit(limit).Offset(offset).Order("id desc").Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	baseURL := utils.GetBaseURL(c)
+	for i := range products {
+		products[i].Images = utils.FormatImageURLs(products[i].Images, baseURL)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "My products retrieved successfully",
+		"products": gin.H{
+			"total": total,
+			"items": products,
+		},
+	})
+}
+
 func GetAllListings(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 	search := c.Query("search")
+	categoryIDs := c.Query("category_ids")
+	minPrice := c.Query("min_price")
+	maxPrice := c.Query("max_price")
+	conditionIDs := c.Query("condition_ids")
+	sort := c.Query("sort")
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -845,10 +974,44 @@ func GetAllListings(c *gin.Context) {
 	var products []models.Product
 	var productTotal int64
 	productQuery := database.DB.Model(&models.Product{})
+
 	if search != "" {
 		searchTerm := "%" + search + "%"
 		productQuery = productQuery.Where("name ILIKE ? OR description ILIKE ?", searchTerm, searchTerm)
 	}
+
+	if categoryIDs != "" {
+		ids := strings.Split(categoryIDs, ",")
+		productQuery = productQuery.Where("category_id IN ?", ids)
+	}
+
+	if minPrice != "" {
+		price, _ := strconv.ParseFloat(minPrice, 64)
+		productQuery = productQuery.Where("price >= ?", price)
+	}
+
+	if maxPrice != "" {
+		price, _ := strconv.ParseFloat(maxPrice, 64)
+		productQuery = productQuery.Where("price <= ?", price)
+	}
+
+	if conditionIDs != "" {
+		ids := strings.Split(conditionIDs, ",")
+		productQuery = productQuery.Where("product_condition_id IN ?", ids)
+	}
+
+	// Sorting
+	switch sort {
+	case "price_asc":
+		productQuery = productQuery.Order("price ASC")
+	case "price_desc":
+		productQuery = productQuery.Order("price DESC")
+	case "newest":
+		productQuery = productQuery.Order("created_at DESC")
+	default:
+		productQuery = productQuery.Order("id DESC")
+	}
+
 	if err := productQuery.Count(&productTotal).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
@@ -862,10 +1025,64 @@ func GetAllListings(c *gin.Context) {
 	var vehicles []models.Vehicle
 	var vehicleTotal int64
 	vehicleQuery := database.DB.Model(&models.Vehicle{})
+
 	if search != "" {
 		searchTerm := "%" + search + "%"
 		vehicleQuery = vehicleQuery.Where("vehicle_make ILIKE ? OR vehicle_model ILIKE ? OR description ILIKE ?", searchTerm, searchTerm, searchTerm)
 	}
+
+	// Check if this is a vehicle category
+	isVehicleOnly := false
+	if categoryIDs != "" {
+		ids := strings.Split(categoryIDs, ",")
+		var categoryObjects []models.Category
+		if err := database.DB.Preload("CategoryGroup").Where("id IN ?", ids).Find(&categoryObjects).Error; err == nil {
+			hasVehicleCategory := false
+			hasOtherCategory := false
+			for _, cat := range categoryObjects {
+				if cat.CategoryGroup.Name == "Vehicles" || cat.Name == "Vehicles" {
+					hasVehicleCategory = true
+				} else {
+					hasOtherCategory = true
+				}
+			}
+
+			if hasVehicleCategory && !hasOtherCategory {
+				isVehicleOnly = true
+			} else if !hasVehicleCategory {
+				// If filtering by non-vehicle categories only, hide vehicles
+				vehicleQuery = vehicleQuery.Where("1 = 0")
+			}
+		}
+	}
+
+	if minPrice != "" {
+		price, _ := strconv.ParseFloat(minPrice, 64)
+		vehicleQuery = vehicleQuery.Where("price >= ?", price)
+	}
+
+	if maxPrice != "" {
+		price, _ := strconv.ParseFloat(maxPrice, 64)
+		vehicleQuery = vehicleQuery.Where("price <= ?", price)
+	}
+
+	// Vehicles don't have conditions in the current model
+	if conditionIDs != "" {
+		vehicleQuery = vehicleQuery.Where("1 = 0")
+	}
+
+	// Sorting for vehicles
+	switch sort {
+	case "price_asc":
+		vehicleQuery = vehicleQuery.Order("price ASC")
+	case "price_desc":
+		vehicleQuery = vehicleQuery.Order("price DESC")
+	case "newest":
+		vehicleQuery = vehicleQuery.Order("created_at DESC")
+	default:
+		vehicleQuery = vehicleQuery.Order("id DESC")
+	}
+
 	if err := vehicleQuery.Count(&vehicleTotal).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
@@ -873,6 +1090,12 @@ func GetAllListings(c *gin.Context) {
 	if err := vehicleQuery.Preload("VehicleType").Limit(limit).Offset(offset).Find(&vehicles).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Database error: " + err.Error()})
 		return
+	}
+
+	// If it's a vehicle only search, we can zero out products (optional but clearer)
+	if isVehicleOnly {
+		products = []models.Product{}
+		productTotal = 0
 	}
 
 	// Get active boosts
