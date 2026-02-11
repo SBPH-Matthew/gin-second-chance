@@ -65,7 +65,7 @@ func RegisterRoutes(r *gin.Engine) {
 	category := api.Group("/category")
 	{
 		category.GET("/", middleware.AuthRequired(), handlers.CategoryPaginate)
-		category.GET("/all", middleware.AuthRequired(), handlers.GetAllCategory)
+		category.GET("/all", handlers.GetAllCategory)
 		category.POST("/", middleware.AuthRequired(), handlers.CreateCategory)
 		category.PUT("/:id", middleware.AuthRequired(), handlers.UpdateCategory)
 		category.PUT("/:id/status", middleware.AuthRequired(), handlers.SetCategoryStatus)
@@ -74,7 +74,7 @@ func RegisterRoutes(r *gin.Engine) {
 
 	productCondition := api.Group("/product-condition")
 	{
-		productCondition.GET("/", middleware.AuthRequired(), handlers.GetAllProductCondition)
+		productCondition.GET("/", handlers.GetAllProductCondition)
 		productCondition.POST("/", middleware.AuthRequired(), handlers.CreateProductCondition)
 		productCondition.PUT("/:id", middleware.AuthRequired(), handlers.UpdateProductCondition)
 		productCondition.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteProductCondition)
