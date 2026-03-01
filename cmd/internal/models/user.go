@@ -26,8 +26,11 @@ type User struct {
 
 	// New fields for verification and contact
 	Phone            string  `json:"phone"`
+	PhoneVerified    bool    `gorm:"default:false" json:"phone_verified"`
 	Bio              string  `gorm:"type:text" json:"bio"`
 	IdentityVerified bool    `gorm:"default:false" json:"identity_verified"`
+	EmailVerified    bool    `gorm:"default:false" json:"email_verified"`
+	SocialLinked     bool    `gorm:"default:false" json:"social_linked"`
 	IDDocument       string  `json:"id_document"` // Path to uploaded ID document
 	Rating           float64 `gorm:"default:0" json:"rating"`
 	TotalReviews     int     `gorm:"default:0" json:"total_reviews"`

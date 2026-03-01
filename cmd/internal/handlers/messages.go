@@ -118,3 +118,89 @@ func GetAllConversations(c *gin.Context) {
 
 	c.JSON(http.StatusOK, conversations)
 }
+
+func MakeOffer(c *gin.Context) {
+	type OfferRequest struct {
+		ConversationID uint    `json:"conversation_id" binding:"required"`
+		OfferPrice     float64 `json:"offer_price" binding:"required"`
+	}
+
+	var body OfferRequest
+	if err := utils.ValidateBodyJSON(c, &body); err != nil {
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	var conv models.Conversation
+	if err := database.DB.Preload("Product").Where("id = ? AND (participant_one_id = ? OR participant_two_id = ?)", body.ConversationID, userID, userID).
+		First(&conv).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": "Conversation not found or access denied"})
+		return
+	}
+
+	// Update offer details
+	conv.OfferPrice = body.OfferPrice
+	conv.OfferStatus = "pending"
+
+	if err := database.DB.Save(&conv).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to make offer"})
+		return
+	}
+
+	// Send a system message
+	content := "I've made an offer of " + strconv.FormatFloat(body.OfferPrice, 'f', 2, 64)
+	message := models.Message{
+		ConversationID: conv.ID,
+		SenderID:       userID,
+		Content:        content,
+	}
+	database.DB.Create(&message)
+
+	c.JSON(http.StatusOK, conv)
+}
+
+func AcceptOffer(c *gin.Context) {
+	conversationID, _ := strconv.Atoi(c.Param("id"))
+	userID := c.MustGet("userID").(uint)
+
+	var conv models.Conversation
+	if err := database.DB.Preload("Product").Where("id = ? AND (participant_one_id = ? OR participant_two_id = ?)", conversationID, userID, userID).
+		First(&conv).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": "Conversation not found or access denied"})
+		return
+	}
+
+	// Only the seller can accept the offer
+	// In SendMessage, participant_two is recipient. But conversation could be initiated by seller?
+	// Usually participant_two is the one who was messaged.
+	// Let's check sender of the offer. If sender was participant_one, then participant_two (seller) should accept.
+	// Actually, the prompt says "Allow price negotiation while triggering a “Reserved” database state upon acceptance."
+
+	if conv.Product.SellerID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"message": "Only the seller can accept offers"})
+		return
+	}
+
+	conv.OfferStatus = "accepted"
+	if err := database.DB.Save(&conv).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to accept offer"})
+		return
+	}
+
+	// Trigger "Reserved" state in product
+	var reservedStatus models.ProductStatus
+	if err := database.DB.Where("name = ?", "RESERVED").First(&reservedStatus).Error; err == nil {
+		database.DB.Model(&models.Product{}).Where("id = ?", conv.ProductID).Update("status_id", reservedStatus.ID)
+	}
+
+	// Send system message
+	message := models.Message{
+		ConversationID: conv.ID,
+		SenderID:       userID,
+		Content:        "Offer accepted! Product is now reserved for you.",
+	}
+	database.DB.Create(&message)
+
+	c.JSON(http.StatusOK, conv)
+}

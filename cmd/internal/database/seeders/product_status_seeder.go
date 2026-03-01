@@ -8,7 +8,7 @@ import (
 )
 
 func SeedProductStatus() {
-	statuses := []string{"ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED"}
+	statuses := []string{"ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED", "RESERVED", "SOLD"}
 
 	for _, name := range statuses {
 		database.DB.FirstOrCreate(

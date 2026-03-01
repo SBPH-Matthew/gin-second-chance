@@ -145,6 +145,8 @@ func RegisterRoutes(r *gin.Engine) {
 		messages.GET("/conversations", middleware.AuthRequired(), handlers.GetConversations)
 		messages.GET("/conversation/:id", middleware.AuthRequired(), handlers.GetMessages)
 		messages.POST("/send", middleware.AuthRequired(), handlers.SendMessage)
+		messages.POST("/offer", middleware.AuthRequired(), handlers.MakeOffer)
+		messages.POST("/offer/:id/accept", middleware.AuthRequired(), handlers.AcceptOffer)
 	}
 
 	reviews := api.Group("/review")
@@ -162,4 +164,5 @@ func RegisterRoutes(r *gin.Engine) {
 	api.GET("/listings", handlers.GetAllListings)
 	api.GET("/listings/:id", handlers.ListingDetails)
 	api.GET("/listings/self", middleware.AuthRequired(), handlers.GetMyListings)
+	api.POST("/listings/:id/reveal-contact", middleware.AuthRequired(), handlers.RevealContact)
 }

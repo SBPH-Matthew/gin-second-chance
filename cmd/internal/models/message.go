@@ -10,6 +10,14 @@ type Conversation struct {
 	ProductID        uint      `json:"product_id"`
 	Product          Product   `json:"product"`
 	Messages         []Message `json:"messages"`
+
+	// Trust Signals
+	OneConfirmedSale bool `gorm:"default:false" json:"one_confirmed_sale"` // ParticipantOne confirms transaction
+	TwoConfirmedSale bool `gorm:"default:false" json:"two_confirmed_sale"` // ParticipantTwo confirms transaction
+
+	// Offer Mechanism
+	OfferPrice  float64 `json:"offer_price"`
+	OfferStatus string  `gorm:"default:'none'" json:"offer_status"` // none, pending, accepted, rejected, cancelled
 }
 
 type Message struct {

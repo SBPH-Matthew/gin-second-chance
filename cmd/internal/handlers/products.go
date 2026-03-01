@@ -1207,3 +1207,61 @@ func GetAllListings(c *gin.Context) {
 		},
 	})
 }
+
+func RevealContact(c *gin.Context) {
+	id := c.Param("id")
+	itemType := c.Query("type")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID"})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	// Basic rate limiting: Check if user has viewed too many contacts in the last hour
+	var count int64
+	oneHourAgo := time.Now().Add(-1 * time.Hour)
+	database.DB.Model(&models.ContactViewLog{}).Where("viewer_id = ? AND created_at > ?", userID, oneHourAgo).Count(&count)
+
+	if count > 5 {
+		c.JSON(http.StatusTooManyRequests, gin.H{"message": "You've reached the limit for viewing contact info. Please try again later."})
+		return
+	}
+
+	var sellerID uint
+	var phone, email string
+
+	if itemType == "vehicle" {
+		var vehicle models.Vehicle
+		if err := database.DB.Preload("Seller").First(&vehicle, idInt).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "Vehicle not found"})
+			return
+		}
+		sellerID = vehicle.SellerID
+		phone = vehicle.Seller.Phone
+		email = vehicle.Seller.Email
+	} else {
+		var product models.Product
+		if err := database.DB.Preload("Seller").First(&product, idInt).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "Product not found"})
+			return
+		}
+		sellerID = product.SellerID
+		phone = product.Seller.Phone
+		email = product.Seller.Email
+	}
+
+	// Log the event
+	log := models.ContactViewLog{
+		ViewerID:  userID,
+		SellerID:  sellerID,
+		ProductID: uint(idInt),
+	}
+	database.DB.Create(&log)
+
+	c.JSON(http.StatusOK, gin.H{
+		"phone": phone,
+		"email": email,
+	})
+}

@@ -36,16 +36,19 @@ func (a *StringArray) Scan(value interface{}) error {
 
 type Product struct {
 	gorm.Model
-	ID                uint        `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name              string      `gorm:"not null" json:"name"`
-	Description       string      `gorm:"not null" json:"description"`
-	Price             float64     `gorm:"not null" json:"price"`
-	Location          string      `gorm:"not null" json:"location"`
-	Images            StringArray `gorm:"type:json" json:"images"`
-	CategoryID        uint        `json:"category_id"`
-	StatusID          uint        `json:"status_id"`
-	SellerID          uint        `json:"seller_id"`
-	ProductConditionID uint       `json:"product_condition_id"`
+	ID                 uint        `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name               string      `gorm:"not null" json:"name"`
+	Description        string      `gorm:"not null" json:"description"`
+	Price              float64     `gorm:"not null" json:"price"`
+	Location           string      `gorm:"not null" json:"location"`
+	Images             StringArray `gorm:"type:json" json:"images"`
+	CategoryID         uint        `json:"category_id"`
+	StatusID           uint        `json:"status_id"`
+	SellerID           uint        `json:"seller_id"`
+	ProductConditionID uint        `json:"product_condition_id"`
+	MeetupLocations    StringArray `gorm:"type:json" json:"meetup_locations"`
+	Negotiable         bool        `gorm:"default:true" json:"negotiable"`
+	ReservedUntil      *int64      `json:"reserved_until"` // Timestamp for reservation
 
 	Category         Category         `json:"category"`
 	Status           ProductStatus    `json:"status"`
